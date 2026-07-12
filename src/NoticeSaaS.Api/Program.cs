@@ -12,7 +12,7 @@ if (!string.IsNullOrWhiteSpace(appInsightsConnection))
 builder.Services.AddHealthChecks();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
@@ -29,6 +29,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    await app.Services.InitializeDatabaseAsync();
 }
 
 app.UseHttpsRedirection();
