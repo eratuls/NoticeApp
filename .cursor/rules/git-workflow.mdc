@@ -1,0 +1,39 @@
+---
+description: Feature branch workflow — always PR into main, never commit directly to main
+alwaysApply: true
+---
+
+# Git workflow
+
+## Default branch
+
+- The default branch is **`main`**.
+- Do **not** commit feature work directly to `main`.
+- Do **not** push unfinished work to `main`.
+
+## Feature branches
+
+For every new feature, fix, or day of work:
+
+1. Start from an up-to-date `main`:
+   ```powershell
+   git checkout main
+   git pull origin main
+   ```
+2. Create a descriptive branch:
+   - Features: `feature/<short-slug>` (e.g. `feature/day2-ef-core-organizations`)
+   - Fixes: `fix/<short-slug>`
+   - Chores: `chore/<short-slug>`
+3. Commit only on that branch.
+
+## Pull requests
+
+- Always open a PR **into `main`** (never into another long-lived branch unless asked).
+- Use `gh pr create --base main`.
+- Push the feature branch with `-u` before creating the PR.
+- One concern per PR when practical; keep the PR title and body focused on why.
+
+## After merge
+
+- Switch back to `main`, pull, and delete the local feature branch if it is no longer needed.
+- Start the next piece of work on a **new** branch from `main`.

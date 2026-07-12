@@ -1,0 +1,87 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #1a2332;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, #d8e8f5 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 10%, #e8f0e6 0%, transparent 50%),
+    #f3f6f9;
+}
+
+.shell {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a6b7d;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  margin: 0.5rem 0 0;
+  color: #4a5a6a;
+}
+
+.status {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.35rem;
+  border-left: 3px solid #8a9aab;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.status[data-state='ok'] {
+  border-left-color: #2f7a4a;
+}
+
+.status[data-state='error'] {
+  border-left-color: #b33a3a;
+}
+
+.ok {
+  margin: 0;
+  font-weight: 600;
+  color: #2f7a4a;
+}
+
+.err {
+  margin: 0;
+  font-weight: 600;
+  color: #b33a3a;
+}
+
+.meta,
+.hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: #5a6b7d;
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #9aabbc;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover {
+  background: #eef3f7;
+}
+
+code {
+  font-size: 0.85em;
+}
