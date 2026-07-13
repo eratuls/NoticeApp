@@ -39,6 +39,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   readonly unreadCount = signal(0);
   readonly notifications = signal<NotificationItem[]>([]);
   readonly panelOpen = signal(false);
+  readonly syncCreditsRemaining = signal<number | null>(null);
   readonly remainingLabel = computed(() => {
     const expires = this.auth.sessionExpiresAt();
     if (!expires) {
@@ -61,11 +62,13 @@ export class ShellComponent implements OnInit, OnDestroy {
 
     this.auth.refreshSession().subscribe();
     this.loadNotifications();
+    this.loadUsage();
     this.routeSub = this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe(() => {
         this.auth.refreshSession().subscribe();
         this.loadNotifications();
+        this.loadUsage();
       });
   }
 
@@ -104,6 +107,13 @@ export class ShellComponent implements OnInit, OnDestroy {
           /* keep prior badge state */
         }
       });
+  }
+
+  loadUsage(): void {
+    this.http.get<{ syncCreditsRemaining: number }>(`${environment.apiBaseUrl}/api/v1/usage`).subscribe({
+      next: (res) => this.syncCreditsRemaining.set(res.syncCreditsRemaining),
+      error: () => this.syncCreditsRemaining.set(null)
+    });
   }
 
   markRead(item: NotificationItem, event: Event): void {

@@ -1,15 +1,13 @@
-# NoticeSaaS — Day 8 (Income Tax sync worker)
+# NoticeSaaS - Day 9 (Usage & Limits)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 8 done when
+## Day 9 done when
 
-- [x] `SyncJob` / `SyncJobLog` entities + migration; enqueue due clients by `NextSyncAtUtc`
-- [x] Trigger sync from Clients UI / API (password-only portal accounts)
-- [x] Worker decrypts `PortalCredential` in-process; mock password-only portal adapter (Playwright-ready interface)
-- [x] Fetch notices, upsert into `Notices` by `DocumentReferenceId`; update `LastSyncAtUtc` / `NextSyncAtUtc`
-- [x] Sync status visible on client list (Succeeded / Failed + error)
-- [x] Endpoint tests for enqueue + notice upsert / idempotent dedupe
+- [x] Usage & Limits API: assessee seats + sync credit quotas for the org
+- [x] Sync credit ledger: decrement on successful sync; block when exhausted
+- [x] Settings > Usage & Limits UI (meters + remaining credits)
+- [x] Seed demo subscription quotas; tests for quota enforcement
 
 ### Auth
 
@@ -26,17 +24,12 @@ dotnet run
 ```
 
 ```powershell
-cd src/NoticeSaaS.Workers
-dotnet run
-```
-
-```powershell
 cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Clients → **Sync now** on a password-only account.
+Open http://localhost:4200 → Usage (or header Sync credits).
 
-## Next — Day 9
+## Next - Day 10
 
-Usage & Limits (sync credits / assessee quotas).
+OTP-assisted portal sync handoff (or polish from Phase 1 acceptance checklist).

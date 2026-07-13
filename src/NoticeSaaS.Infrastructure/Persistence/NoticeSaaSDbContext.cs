@@ -19,6 +19,8 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
     public DbSet<SyncJobLog> SyncJobLogs => Set<SyncJobLog>();
+    public DbSet<OrganizationSubscription> OrganizationSubscriptions => Set<OrganizationSubscription>();
+    public DbSet<SyncCreditLedgerEntry> SyncCreditLedger => Set<SyncCreditLedgerEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

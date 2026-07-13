@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NoticeSaaS.Application.Auth;
+using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Application.Dashboard;
 using NoticeSaaS.Application.Notices;
@@ -14,6 +15,7 @@ using NoticeSaaS.Application.Notifications;
 using NoticeSaaS.Application.Reminders;
 using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Infrastructure.Auth;
+using NoticeSaaS.Infrastructure.Billing;
 using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
 using NoticeSaaS.Infrastructure.Notices;
@@ -60,6 +62,7 @@ public static class DependencyInjection
         services.AddSingleton<IIncomeTaxPortalClient, MockIncomeTaxPortalClient>();
         services.AddScoped<ISyncJobProcessor, SyncJobProcessor>();
         services.AddScoped<ISyncService, SyncService>();
+        services.AddScoped<IUsageLimitsService, UsageLimitsService>();
         return services;
     }
 

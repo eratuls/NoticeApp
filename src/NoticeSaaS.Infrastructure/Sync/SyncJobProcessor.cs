@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Domain.Entities;
 using NoticeSaaS.Domain.Enums;
@@ -13,6 +14,7 @@ public sealed class SyncJobProcessor(
     NoticeSaaSDbContext db,
     IDataProtectionProvider dataProtectionProvider,
     IIncomeTaxPortalClient portalClient,
+    IUsageLimitsService usageLimitsService,
     ILogger<SyncJobProcessor> logger) : ISyncJobProcessor
 {
     private readonly IDataProtector _protector =
@@ -59,6 +61,13 @@ public sealed class SyncJobProcessor(
         if (client.Credential is null)
         {
             await MarkFailedAsync(syncJobId, "Portal credentials are missing for this client.", cancellationToken);
+            return;
+        }
+
+        var creditCheck = await usageLimitsService.EnsureHasSyncCreditAsync(job.OrganizationId, cancellationToken);
+        if (!creditCheck.Allowed)
+        {
+            await MarkFailedAsync(syncJobId, creditCheck.Error ?? "Sync credits exhausted.", cancellationToken);
             return;
         }
 
@@ -114,6 +123,8 @@ public sealed class SyncJobProcessor(
                         .SetProperty(j => j.NoticesUpserted, upserted)
                         .SetProperty(j => j.ErrorMessage, (string?)null),
                     cancellationToken);
+
+            await usageLimitsService.ConsumeSyncCreditAsync(job.OrganizationId, syncJobId, cancellationToken);
 
             await AddLogAsync(syncJobId, "Info",
                 $"Sync succeeded. Upserted {upserted} notice(s). Next sync at {nextSync:u}.",

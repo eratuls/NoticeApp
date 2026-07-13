@@ -47,6 +47,11 @@ export const routes: Routes = [
         path: 'reminders',
         loadComponent: () =>
           import('./features/reminders/reminders.component').then((m) => m.RemindersComponent)
+      },
+      {
+        path: 'settings/usage',
+        loadComponent: () =>
+          import('./features/usage/usage-limits.component').then((m) => m.UsageLimitsComponent)
       }
     ]
   },
