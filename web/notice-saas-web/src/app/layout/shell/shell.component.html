@@ -29,9 +29,49 @@
           <p class="strip-title">{{ u.organizationName }}</p>
         }
       </div>
-      <div class="session" title="Session remaining">
-        <span class="session-label">Session</span>
-        <span class="session-time">{{ remainingLabel() }}</span>
+      <div class="strip-actions">
+        <div class="notify" (click)="$event.stopPropagation()">
+          <button
+            type="button"
+            class="notify-btn"
+            [attr.aria-expanded]="panelOpen()"
+            aria-label="Notifications"
+            (click)="togglePanel($event)"
+          >
+            Alerts
+            @if (unreadCount() > 0) {
+              <span class="badge">{{ unreadCount() }}</span>
+            }
+          </button>
+          @if (panelOpen()) {
+            <div class="notify-panel" role="dialog" aria-label="Notifications">
+              <div class="notify-head">
+                <strong>Notifications</strong>
+                <button type="button" class="linkish" (click)="markAllRead($event)">Mark all read</button>
+              </div>
+              @if (notifications().length === 0) {
+                <p class="notify-empty">No notifications yet.</p>
+              } @else {
+                <ul>
+                  @for (n of notifications(); track n.id) {
+                    <li [class.unread]="!n.isRead">
+                      <button type="button" (click)="markRead(n, $event)">
+                        <strong>{{ n.title }}</strong>
+                        <span>{{ n.body }}</span>
+                        <em>{{ n.createdAtUtc | date: 'short' }}</em>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <a routerLink="/reminders" class="notify-foot" (click)="panelOpen.set(false)">Open reminders</a>
+            </div>
+          }
+        </div>
+        <div class="session" title="Session remaining">
+          <span class="session-label">Session</span>
+          <span class="session-time">{{ remainingLabel() }}</span>
+        </div>
       </div>
     </header>
 

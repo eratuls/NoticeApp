@@ -45,11 +45,8 @@ export const routes: Routes = [
       },
       {
         path: 'reminders',
-        data: { title: 'Reminders' },
         loadComponent: () =>
-          import('./features/placeholder/placeholder-page.component').then(
-            (m) => m.PlaceholderPageComponent
-          )
+          import('./features/reminders/reminders.component').then((m) => m.RemindersComponent)
       }
     ]
   },

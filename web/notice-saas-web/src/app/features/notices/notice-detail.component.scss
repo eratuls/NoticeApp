@@ -85,6 +85,51 @@ button.primary {
   cursor: pointer;
 }
 
+.reminder-box {
+  margin-top: 1.5rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--line);
+}
+
+.reminder-box h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.reminder-form {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.reminder-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.reminder-form .wide {
+  grid-column: 1 / -2;
+}
+
+.reminder-form input,
+.reminder-form select {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font: inherit;
+}
+
+.reminder-msg {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .meta {
   margin-top: 1.5rem;
   display: grid;
@@ -170,7 +215,12 @@ h2 {
 
 @media (max-width: 800px) {
   .meta,
-  .split {
+  .split,
+  .reminder-form {
     grid-template-columns: 1fr;
+  }
+
+  .reminder-form .wide {
+    grid-column: auto;
   }
 }

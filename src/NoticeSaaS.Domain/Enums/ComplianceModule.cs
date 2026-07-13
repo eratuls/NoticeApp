@@ -33,3 +33,10 @@ public enum NoticeKind
     Manual = 2,
     CaseStatus = 3
 }
+
+public enum ReminderPriority
+{
+    Low = 0,
+    Medium = 1,
+    High = 2
+}

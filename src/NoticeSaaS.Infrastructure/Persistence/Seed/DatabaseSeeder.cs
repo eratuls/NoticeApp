@@ -32,6 +32,7 @@ public static class DatabaseSeeder
         await SeedRolesAsync(db, cancellationToken);
         await SeedAdminWorkspaceAsync(db, logger, cancellationToken);
         await SeedDemoClientsAndNoticesAsync(db, logger, portalCredentialProtector, cancellationToken);
+        await SeedDemoRemindersAndNotificationsAsync(db, logger, cancellationToken);
     }
 
     private static async Task SeedRolesAsync(NoticeSaaSDbContext db, CancellationToken cancellationToken)
@@ -318,4 +319,162 @@ public static class DatabaseSeeder
             CreatedAtUtc = DateTimeOffset.UtcNow.AddDays(-index),
             ClosedAtUtc = closedAt
         };
+
+    private static async Task SeedDemoRemindersAndNotificationsAsync(
+        NoticeSaaSDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+
+        var desiredReminders = new[]
+        {
+            new Reminder
+            {
+                Id = Guid.Parse("77777777-7777-7777-7777-000000000001"),
+                OrganizationId = SeedOrganizationId,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000005"),
+                ClientId = SeedClientId,
+                Module = ComplianceModule.IncomeTax,
+                Description = "Reply to demand notice follow-up",
+                ProceedingId = "PROC-0005",
+                DocumentReferenceId = "DIN-2024005",
+                AssesseeIdentifier = "AABCM1234F",
+                Priority = ReminderPriority.High,
+                DueOn = today.AddDays(-1),
+                IsDone = false,
+                CreatedByUserId = SeedAdminUserId,
+                CreatedAtUtc = now.AddDays(-2)
+            },
+            new Reminder
+            {
+                Id = Guid.Parse("77777777-7777-7777-7777-000000000002"),
+                OrganizationId = SeedOrganizationId,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000004"),
+                ClientId = SeedClientId,
+                Module = ComplianceModule.IncomeTax,
+                Description = "Prepare 148 reassessment response pack",
+                ProceedingId = "PROC-0004",
+                DocumentReferenceId = "DIN-2024004",
+                AssesseeIdentifier = "AABCM1234F",
+                Priority = ReminderPriority.Medium,
+                DueOn = today.AddDays(3),
+                IsDone = false,
+                CreatedByUserId = SeedAdminUserId,
+                CreatedAtUtc = now.AddDays(-1)
+            },
+            new Reminder
+            {
+                Id = Guid.Parse("77777777-7777-7777-7777-000000000003"),
+                OrganizationId = SeedOrganizationId,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000006"),
+                ClientId = SeedClientId,
+                Module = ComplianceModule.IncomeTax,
+                Description = "File rectification reply (completed)",
+                ProceedingId = "PROC-0006",
+                DocumentReferenceId = "DIN-2024006",
+                AssesseeIdentifier = "AABCM1234F",
+                Priority = ReminderPriority.Low,
+                DueOn = today.AddDays(-10),
+                IsDone = true,
+                CreatedByUserId = SeedAdminUserId,
+                CreatedAtUtc = now.AddDays(-12),
+                CompletedAtUtc = now.AddDays(-9)
+            }
+        };
+
+        foreach (var desired in desiredReminders)
+        {
+            var existing = await db.Reminders.FirstOrDefaultAsync(r => r.Id == desired.Id, cancellationToken);
+            if (existing is null)
+            {
+                db.Reminders.Add(desired);
+                continue;
+            }
+
+            existing.NoticeId = desired.NoticeId;
+            existing.ClientId = desired.ClientId;
+            existing.Module = desired.Module;
+            existing.Description = desired.Description;
+            existing.ProceedingId = desired.ProceedingId;
+            existing.DocumentReferenceId = desired.DocumentReferenceId;
+            existing.AssesseeIdentifier = desired.AssesseeIdentifier;
+            existing.Priority = desired.Priority;
+            existing.DueOn = desired.DueOn;
+            existing.IsDone = desired.IsDone;
+            existing.CompletedAtUtc = desired.CompletedAtUtc;
+        }
+
+        var desiredNotifications = new[]
+        {
+            new AppNotification
+            {
+                Id = Guid.Parse("88888888-8888-8888-8888-000000000001"),
+                OrganizationId = SeedOrganizationId,
+                UserId = SeedAdminUserId,
+                Title = "Overdue reminder",
+                Body = "Reply to demand notice follow-up is past due.",
+                IsRead = false,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000005"),
+                ReminderId = Guid.Parse("77777777-7777-7777-7777-000000000001"),
+                CreatedAtUtc = now.AddHours(-6)
+            },
+            new AppNotification
+            {
+                Id = Guid.Parse("88888888-8888-8888-8888-000000000002"),
+                OrganizationId = SeedOrganizationId,
+                UserId = SeedAdminUserId,
+                Title = "Upcoming due date",
+                Body = "Prepare 148 reassessment response pack is due in 3 days.",
+                IsRead = false,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000004"),
+                ReminderId = Guid.Parse("77777777-7777-7777-7777-000000000002"),
+                CreatedAtUtc = now.AddHours(-2)
+            },
+            new AppNotification
+            {
+                Id = Guid.Parse("88888888-8888-8888-8888-000000000003"),
+                OrganizationId = SeedOrganizationId,
+                UserId = SeedAdminUserId,
+                Title = "Reminder completed",
+                Body = "File rectification reply was marked done.",
+                IsRead = true,
+                NoticeId = Guid.Parse("55555555-5555-5555-5555-000000000006"),
+                ReminderId = Guid.Parse("77777777-7777-7777-7777-000000000003"),
+                CreatedAtUtc = now.AddDays(-9),
+                ReadAtUtc = now.AddDays(-8)
+            }
+        };
+
+        foreach (var desired in desiredNotifications)
+        {
+            var existing = await db.Notifications.FirstOrDefaultAsync(n => n.Id == desired.Id, cancellationToken);
+            if (existing is null)
+            {
+                db.Notifications.Add(desired);
+                continue;
+            }
+
+            existing.Title = desired.Title;
+            existing.Body = desired.Body;
+            existing.IsRead = desired.IsRead;
+            existing.NoticeId = desired.NoticeId;
+            existing.ReminderId = desired.ReminderId;
+            existing.ReadAtUtc = desired.ReadAtUtc;
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation(
+                "Ensured {ReminderCount} demo reminders and {NotificationCount} notifications",
+                desiredReminders.Length,
+                desiredNotifications.Length);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+        }
+    }
 }

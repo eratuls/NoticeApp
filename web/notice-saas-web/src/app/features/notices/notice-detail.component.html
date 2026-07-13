@@ -34,6 +34,34 @@
         </button>
       </div>
 
+      <section class="reminder-box" aria-label="Set reminder">
+        <h2>Set reminder</h2>
+        <div class="reminder-form">
+          <label>
+            <span>Due on</span>
+            <input type="date" [ngModel]="reminderDue()" (ngModelChange)="reminderDue.set($event)" />
+          </label>
+          <label>
+            <span>Priority</span>
+            <select [ngModel]="reminderPriority()" (ngModelChange)="reminderPriority.set($event)">
+              @for (p of priorities; track p) {
+                <option [value]="p">{{ p }}</option>
+              }
+            </select>
+          </label>
+          <label class="wide">
+            <span>Note</span>
+            <input [ngModel]="reminderNote()" (ngModelChange)="reminderNote.set($event)" />
+          </label>
+          <button type="button" class="primary" (click)="setReminder()" [disabled]="reminderSaving()">
+            {{ reminderSaving() ? 'Saving…' : 'Schedule' }}
+          </button>
+        </div>
+        @if (reminderMessage()) {
+          <p class="reminder-msg">{{ reminderMessage() }}</p>
+        }
+      </section>
+
       <section class="meta" aria-label="Notice metadata">
         <div><span>Assessee</span><strong>{{ n.clientName }}</strong></div>
         <div><span>PAN</span><strong>{{ n.clientPan }}</strong></div>
