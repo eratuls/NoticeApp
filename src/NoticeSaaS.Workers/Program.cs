@@ -1,3 +1,4 @@
+using NoticeSaaS.Infrastructure;
 using NoticeSaaS.Workers;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -9,7 +10,9 @@ if (!string.IsNullOrWhiteSpace(appInsightsConnection))
         options.ConnectionString = appInsightsConnection);
 }
 
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddSyncServices();
+builder.Services.AddHostedService<IncomeTaxSyncWorker>();
 
 var host = builder.Build();
 host.Run();

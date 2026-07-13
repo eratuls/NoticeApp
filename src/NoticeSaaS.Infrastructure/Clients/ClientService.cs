@@ -50,7 +50,22 @@ public sealed class ClientService(
                 c.CreatedAtUtc,
                 c.LastSyncAtUtc,
                 c.NextSyncAtUtc,
-                c.Notices.Count))
+                c.Notices.Count,
+                db.SyncJobs
+                    .Where(j => j.ClientId == c.Id)
+                    .OrderByDescending(j => j.CreatedAtUtc)
+                    .Select(j => j.Status.ToString())
+                    .FirstOrDefault(),
+                db.SyncJobs
+                    .Where(j => j.ClientId == c.Id)
+                    .OrderByDescending(j => j.CreatedAtUtc)
+                    .Select(j => j.ErrorMessage)
+                    .FirstOrDefault(),
+                db.SyncJobs
+                    .Where(j => j.ClientId == c.Id)
+                    .OrderByDescending(j => j.CreatedAtUtc)
+                    .Select(j => (int?)j.NoticesUpserted)
+                    .FirstOrDefault()))
             .ToListAsync(cancellationToken);
     }
 

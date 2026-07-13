@@ -17,6 +17,8 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<NoticeStatusEvent> NoticeStatusEvents => Set<NoticeStatusEvent>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
+    public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
+    public DbSet<SyncJobLog> SyncJobLogs => Set<SyncJobLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
