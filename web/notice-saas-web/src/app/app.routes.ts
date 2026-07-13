@@ -30,11 +30,8 @@ export const routes: Routes = [
       },
       {
         path: 'clients',
-        data: { title: 'Clients' },
         loadComponent: () =>
-          import('./features/placeholder/placeholder-page.component').then(
-            (m) => m.PlaceholderPageComponent
-          )
+          import('./features/clients/clients.component').then((m) => m.ClientsComponent)
       },
       {
         path: 'reminders',

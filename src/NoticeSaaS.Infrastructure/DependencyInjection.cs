@@ -1,13 +1,16 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NoticeSaaS.Application.Auth;
+using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Application.Dashboard;
 using NoticeSaaS.Infrastructure.Auth;
+using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
@@ -38,8 +41,10 @@ public static class DependencyInjection
         services.AddDbContext<NoticeSaaSDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        services.AddDataProtection();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IClientService, ClientService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services
@@ -73,8 +78,11 @@ public static class DependencyInjection
         var db = scope.ServiceProvider.GetRequiredService<NoticeSaaSDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
             .CreateLogger("NoticeSaaS.Database");
+        var protector = scope.ServiceProvider
+            .GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("NoticeSaaS.PortalCredentials.v1");
 
         await db.Database.MigrateAsync(cancellationToken);
-        await DatabaseSeeder.SeedAsync(db, logger, cancellationToken);
+        await DatabaseSeeder.SeedAsync(db, logger, protector, cancellationToken);
     }
 }

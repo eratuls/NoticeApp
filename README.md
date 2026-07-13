@@ -1,14 +1,13 @@
-# NoticeSaaS — Day 4 (Dashboard)
+# NoticeSaaS — Day 5 (Clients)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 4 done when
+## Day 5 done when
 
-- [x] `Client` + `Notice` entities and migration
-- [x] `GET /api/v1/dashboard/summary` (module + period filters)
-- [x] Task buckets: New / Ongoing / Closed / Overdue
-- [x] Angular dashboard wired to live summary data
-- [x] Demo client + 21 Income Tax notices seeded
+- [x] Clients list API with search + module filter
+- [x] Add Client API with sync frequency + encrypted portal credentials
+- [x] Angular Income Tax clients page + Add Client form
+- [x] Demo client seed includes sync schedule + protected password
 
 ### Auth
 
@@ -29,8 +28,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → sign in → dashboard overview.
+Open http://localhost:4200 → Clients.
 
-## Next — Day 5
+## Next — Day 6
 
-Clients list + Add Client (credentials + sync type).
+Client notice list (tabs) + notice detail (manual upload first).
