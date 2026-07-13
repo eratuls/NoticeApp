@@ -10,6 +10,8 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Notice> Notices => Set<Notice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
