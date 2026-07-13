@@ -1,0 +1,170 @@
+using Microsoft.EntityFrameworkCore;
+using NoticeSaaS.Application.Billing;
+using NoticeSaaS.Domain.Entities;
+using NoticeSaaS.Infrastructure.Persistence;
+
+namespace NoticeSaaS.Infrastructure.Billing;
+
+public sealed class UsageLimitsService(NoticeSaaSDbContext db) : IUsageLimitsService
+{
+    public async Task<UsageLimitsDto> GetAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await EnsureSubscriptionAsync(organizationId, cancellationToken);
+        var assesseeUsed = await db.Clients.CountAsync(
+            c => c.OrganizationId == organizationId && c.IsActive,
+            cancellationToken);
+
+        return Map(subscription, assesseeUsed);
+    }
+
+    public async Task<(bool Allowed, string? Error)> EnsureCanAddAssesseeAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await EnsureSubscriptionAsync(organizationId, cancellationToken);
+        if (!subscription.IsActive || subscription.ExpiresAtUtc < DateTimeOffset.UtcNow)
+        {
+            return (false, "Subscription is inactive or expired.");
+        }
+
+        var used = await db.Clients.CountAsync(
+            c => c.OrganizationId == organizationId && c.IsActive,
+            cancellationToken);
+
+        if (used >= subscription.AssesseeLimit)
+        {
+            return (false, $"Assessee limit reached ({used}/{subscription.AssesseeLimit}). Upgrade your plan to add more clients.");
+        }
+
+        return (true, null);
+    }
+
+    public async Task<(bool Allowed, string? Error)> EnsureHasSyncCreditAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await EnsureSubscriptionAsync(organizationId, cancellationToken);
+        if (!subscription.IsActive || subscription.ExpiresAtUtc < DateTimeOffset.UtcNow)
+        {
+            return (false, "Subscription is inactive or expired.");
+        }
+
+        var remaining = subscription.SyncCreditLimit - subscription.SyncCreditsUsed;
+        if (remaining <= 0)
+        {
+            return (false, "Sync credits exhausted. Upgrade your plan or wait for the next reset.");
+        }
+
+        return (true, null);
+    }
+
+    public async Task ConsumeSyncCreditAsync(
+        Guid organizationId,
+        Guid syncJobId,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await db.OrganizationSubscriptions
+            .FirstOrDefaultAsync(s => s.OrganizationId == organizationId, cancellationToken);
+
+        if (subscription is null)
+        {
+            subscription = await EnsureSubscriptionAsync(organizationId, cancellationToken);
+            subscription = await db.OrganizationSubscriptions
+                .FirstAsync(s => s.Id == subscription.Id, cancellationToken);
+        }
+
+        if (subscription.SyncCreditsUsed >= subscription.SyncCreditLimit)
+        {
+            return;
+        }
+
+        var alreadyLogged = await db.SyncCreditLedger.AnyAsync(
+            e => e.SyncJobId == syncJobId && e.Delta < 0,
+            cancellationToken);
+        if (alreadyLogged)
+        {
+            return;
+        }
+
+        subscription.SyncCreditsUsed += 1;
+        subscription.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        var remaining = subscription.SyncCreditLimit - subscription.SyncCreditsUsed;
+
+        db.SyncCreditLedger.Add(new SyncCreditLedgerEntry
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            SubscriptionId = subscription.Id,
+            SyncJobId = syncJobId,
+            Delta = -1,
+            BalanceAfter = Math.Max(0, remaining),
+            Reason = "Income Tax portal sync",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        db.ChangeTracker.Clear();
+    }
+
+    private async Task<OrganizationSubscription> EnsureSubscriptionAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.OrganizationSubscriptions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.OrganizationId == organizationId, cancellationToken);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var created = new OrganizationSubscription
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            PlanName = "Starter",
+            IsActive = true,
+            AssesseeLimit = 5,
+            SyncCreditLimit = 150,
+            SyncCreditsUsed = 0,
+            StartsAtUtc = now,
+            ExpiresAtUtc = now.AddDays(30),
+            ModulesEnabled = "IncomeTax,Gst,Itr,InsightReport",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+
+        db.OrganizationSubscriptions.Add(created);
+        await db.SaveChangesAsync(cancellationToken);
+        db.ChangeTracker.Clear();
+        return created;
+    }
+
+    private static UsageLimitsDto Map(OrganizationSubscription subscription, int assesseeUsed)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var daysRemaining = Math.Max(0, (int)Math.Ceiling((subscription.ExpiresAtUtc - now).TotalDays));
+        var assesseeRemaining = Math.Max(0, subscription.AssesseeLimit - assesseeUsed);
+        var syncRemaining = Math.Max(0, subscription.SyncCreditLimit - subscription.SyncCreditsUsed);
+        var modules = subscription.ModulesEnabled
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        return new UsageLimitsDto(
+            subscription.PlanName,
+            subscription.IsActive && subscription.ExpiresAtUtc >= now,
+            subscription.StartsAtUtc,
+            subscription.ExpiresAtUtc,
+            daysRemaining,
+            assesseeUsed,
+            subscription.AssesseeLimit,
+            assesseeRemaining,
+            subscription.SyncCreditsUsed,
+            subscription.SyncCreditLimit,
+            syncRemaining,
+            modules,
+            "Limits reset automatically on schedule.");
+    }
+}

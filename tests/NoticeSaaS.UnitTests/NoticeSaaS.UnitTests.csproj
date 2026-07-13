@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NoticeSaaS.Application\NoticeSaaS.Application.csproj" />
     <ProjectReference Include="..\..\src\NoticeSaaS.Domain\NoticeSaaS.Domain.csproj" />
+    <ProjectReference Include="..\..\src\NoticeSaaS.Infrastructure\NoticeSaaS.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\NoticeSaaS.Api\NoticeSaaS.Api.csproj" />
   </ItemGroup>
 

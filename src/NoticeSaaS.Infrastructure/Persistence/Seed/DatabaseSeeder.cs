@@ -33,6 +33,7 @@ public static class DatabaseSeeder
         await SeedAdminWorkspaceAsync(db, logger, cancellationToken);
         await SeedDemoClientsAndNoticesAsync(db, logger, portalCredentialProtector, cancellationToken);
         await SeedDemoRemindersAndNotificationsAsync(db, logger, cancellationToken);
+        await SeedDemoSubscriptionAsync(db, logger, cancellationToken);
     }
 
     private static async Task SeedRolesAsync(NoticeSaaSDbContext db, CancellationToken cancellationToken)
@@ -476,5 +477,58 @@ public static class DatabaseSeeder
         {
             db.ChangeTracker.Clear();
         }
+    }
+
+    private static async Task SeedDemoSubscriptionAsync(
+        NoticeSaaSDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var subscriptionId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+        var now = DateTimeOffset.UtcNow;
+        var starts = now.Date.AddDays(-7);
+        var expires = starts.AddDays(15);
+
+        var existing = await db.OrganizationSubscriptions.FirstOrDefaultAsync(
+            s => s.Id == subscriptionId || s.OrganizationId == SeedOrganizationId,
+            cancellationToken);
+
+        if (existing is null)
+        {
+            db.OrganizationSubscriptions.Add(new OrganizationSubscription
+            {
+                Id = subscriptionId,
+                OrganizationId = SeedOrganizationId,
+                PlanName = "Demo Plan",
+                IsActive = true,
+                AssesseeLimit = 50,
+                SyncCreditLimit = 150,
+                SyncCreditsUsed = 15,
+                StartsAtUtc = starts,
+                ExpiresAtUtc = expires,
+                ModulesEnabled = "IncomeTax,InsightReport,Gst,Itr",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+        else
+        {
+            existing.PlanName = "Demo Plan";
+            existing.IsActive = true;
+            existing.AssesseeLimit = 50;
+            existing.SyncCreditLimit = 150;
+            if (existing.SyncCreditsUsed < 15)
+            {
+                existing.SyncCreditsUsed = 15;
+            }
+
+            existing.StartsAtUtc = starts;
+            existing.ExpiresAtUtc = expires;
+            existing.ModulesEnabled = "IncomeTax,InsightReport,Gst,Itr";
+            existing.UpdatedAtUtc = now;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Ensured demo OrganizationSubscription quotas for {Org}", SeedOrganizationName);
     }
 }

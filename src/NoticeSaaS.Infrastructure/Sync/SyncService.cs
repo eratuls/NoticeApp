@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Domain.Entities;
 using NoticeSaaS.Domain.Enums;
@@ -8,7 +9,8 @@ namespace NoticeSaaS.Infrastructure.Sync;
 
 public sealed class SyncService(
     NoticeSaaSDbContext db,
-    ISyncJobProcessor processor) : ISyncService
+    ISyncJobProcessor processor,
+    IUsageLimitsService usageLimitsService) : ISyncService
 {
     public async Task<TriggerSyncResult> TriggerManualAsync(
         Guid organizationId,
@@ -29,6 +31,12 @@ public sealed class SyncService(
         if (!client.IsActive)
         {
             return TriggerSyncResult.Fail("Client is inactive.");
+        }
+
+        var creditCheck = await usageLimitsService.EnsureHasSyncCreditAsync(organizationId, cancellationToken);
+        if (!creditCheck.Allowed)
+        {
+            return TriggerSyncResult.Fail(creditCheck.Error ?? "Sync credits exhausted.");
         }
 
         var hasCredential = await db.PortalCredentials.AnyAsync(c => c.ClientId == clientId, cancellationToken);
@@ -109,6 +117,14 @@ public sealed class SyncService(
         var count = 0;
         foreach (var client in dueClientIds)
         {
+            var creditCheck = await usageLimitsService.EnsureHasSyncCreditAsync(
+                client.OrganizationId,
+                cancellationToken);
+            if (!creditCheck.Allowed)
+            {
+                continue;
+            }
+
             db.SyncJobs.Add(new SyncJob
             {
                 Id = Guid.NewGuid(),

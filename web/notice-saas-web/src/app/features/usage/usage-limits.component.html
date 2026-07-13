@@ -1,0 +1,76 @@
+<section class="usage">
+  <header class="intro">
+    <p class="brand-line">NoticeSaaS</p>
+    <h1>Usage &amp; Limits</h1>
+    <p class="lede">Plan quotas for assessee seats and Income Tax sync credits in this workspace.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="state">Loading usage…</p>
+  } @else if (error()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (usage()) {
+    <div class="plan-row">
+      <div>
+        <p class="label">Plan</p>
+        <p class="value">{{ usage()!.planName }} · {{ usage()!.isActive ? 'Active' : 'Inactive' }}</p>
+      </div>
+      <div>
+        <p class="label">Registration / Expiry</p>
+        <p class="value">
+          {{ usage()!.startsAtUtc | date: 'dd-MMM-yyyy' }} → {{ usage()!.expiresAtUtc | date: 'dd-MMM-yyyy' }}
+          · {{ usage()!.daysRemaining }} days remaining
+        </p>
+      </div>
+    </div>
+
+    <div class="meters">
+      <article>
+        <header>
+          <h2>Assessee limit</h2>
+          <p>
+            {{ usage()!.assesseeUsed }} / {{ usage()!.assesseeLimit }} ·
+            {{ usage()!.assesseeRemaining }} remaining
+          </p>
+        </header>
+        <div
+          class="bar"
+          role="meter"
+          [attr.aria-valuenow]="usage()!.assesseeUsed"
+          [attr.aria-valuemax]="usage()!.assesseeLimit"
+        >
+          <span [style.width.%]="pct(usage()!.assesseeUsed, usage()!.assesseeLimit)"></span>
+        </div>
+      </article>
+
+      <article>
+        <header>
+          <h2>Sync credit</h2>
+          <p>
+            {{ usage()!.syncCreditsUsed }} / {{ usage()!.syncCreditLimit }} used ·
+            <strong>{{ usage()!.syncCreditsRemaining }} remaining</strong>
+          </p>
+        </header>
+        <div
+          class="bar"
+          role="meter"
+          [attr.aria-valuenow]="usage()!.syncCreditsUsed"
+          [attr.aria-valuemax]="usage()!.syncCreditLimit"
+        >
+          <span [style.width.%]="pct(usage()!.syncCreditsUsed, usage()!.syncCreditLimit)"></span>
+        </div>
+      </article>
+    </div>
+
+    <div class="modules">
+      <p class="label">Modules enabled</p>
+      <ul>
+        @for (m of usage()!.modulesEnabled; track m) {
+          <li>{{ m }}</li>
+        }
+      </ul>
+    </div>
+
+    <p class="note">{{ usage()!.note }}</p>
+  }
+</section>

@@ -1,0 +1,141 @@
+.usage {
+  max-width: 42rem;
+}
+
+.intro {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.intro::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 3px;
+  background: var(--copper);
+}
+
+.brand-line {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--copper-deep);
+}
+
+h1 {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.lede {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.state {
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+}
+
+.state.error {
+  color: var(--danger);
+}
+
+.plan-row {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 640px) {
+  .plan-row {
+    grid-template-columns: 1fr 1.4fr;
+  }
+}
+
+.label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.value {
+  margin: 0.35rem 0 0;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.meters {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.meters article header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.meters h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.meters header p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.bar {
+  margin-top: 0.65rem;
+  height: 0.55rem;
+  background: color-mix(in srgb, var(--line) 80%, transparent);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--copper);
+}
+
+.modules {
+  margin-top: 1.75rem;
+}
+
+.modules ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modules li {
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+
+.note {
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Domain.Entities;
 using NoticeSaaS.Domain.Enums;
@@ -9,7 +10,8 @@ namespace NoticeSaaS.Infrastructure.Clients;
 
 public sealed class ClientService(
     NoticeSaaSDbContext db,
-    IDataProtectionProvider dataProtectionProvider) : IClientService
+    IDataProtectionProvider dataProtectionProvider,
+    IUsageLimitsService usageLimitsService) : IClientService
 {
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("NoticeSaaS.PortalCredentials.v1");
 
@@ -105,6 +107,12 @@ public sealed class ClientService(
         if (await db.Clients.AnyAsync(c => c.OrganizationId == organizationId && c.Pan == pan, cancellationToken))
         {
             return CreateClientResult.Fail("A client with this PAN already exists in the workspace.");
+        }
+
+        var seatCheck = await usageLimitsService.EnsureCanAddAssesseeAsync(organizationId, cancellationToken);
+        if (!seatCheck.Allowed)
+        {
+            return CreateClientResult.Fail(seatCheck.Error ?? "Assessee limit reached.");
         }
 
         var now = DateTimeOffset.UtcNow;
