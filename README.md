@@ -1,13 +1,14 @@
-# NoticeSaaS — Day 6 (Notices)
+# NoticeSaaS — Day 7 (Reminders & notifications)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 6 done when
+## Day 7 done when
 
-- [x] Client notice list API with kind filter + search
-- [x] Notice detail API with status update, timeline, and comments
-- [x] Angular client notices page (tabs) + notice detail page
-- [x] Demo seed includes Direct Order kind
+- [x] Reminders API with Pending/Done tabs, priority + search filters
+- [x] Create reminder from notice detail (creates in-app notification)
+- [x] Notifications API with unread badge, mark read / mark all read
+- [x] Angular Reminders page + shell Alerts panel
+- [x] Demo reminders and notifications seeded
 
 ### Auth
 
@@ -28,8 +29,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Clients → notice count → notice list / detail.
+Open http://localhost:4200 → Reminders, or notice detail → Set reminder · Alerts in the top strip.
 
-## Next — Day 7
+## Next — Day 8
 
-Reminders and notifications for due / overdue notices.
+Income Tax sync worker (password-only portal accounts).

@@ -10,10 +10,14 @@ using NoticeSaaS.Application.Auth;
 using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Application.Dashboard;
 using NoticeSaaS.Application.Notices;
+using NoticeSaaS.Application.Notifications;
+using NoticeSaaS.Application.Reminders;
 using NoticeSaaS.Infrastructure.Auth;
 using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
 using NoticeSaaS.Infrastructure.Notices;
+using NoticeSaaS.Infrastructure.Notifications;
+using NoticeSaaS.Infrastructure.Reminders;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -48,6 +52,8 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<INoticeService, NoticeService>();
+        services.AddScoped<IReminderService, ReminderService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services

@@ -147,6 +147,120 @@ nav a.active {
   letter-spacing: -0.02em;
 }
 
+.strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.notify {
+  position: relative;
+}
+
+.notify-btn {
+  position: relative;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  padding: 0.55rem 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.badge {
+  margin-left: 0.4rem;
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  background: var(--copper);
+  color: #1a1208;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.notify-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  width: min(22rem, 85vw);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 30px rgba(10, 26, 49, 0.12);
+  z-index: 20;
+  padding: 0.75rem;
+}
+
+.notify-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--copper-deep);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notify-empty {
+  margin: 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notify-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.notify-panel li button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.4rem;
+  cursor: pointer;
+  display: grid;
+  gap: 0.2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.notify-panel li.unread button {
+  background: rgba(196, 122, 58, 0.08);
+}
+
+.notify-panel strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.notify-panel span,
+.notify-panel em {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
+.notify-foot {
+  display: block;
+  margin-top: 0.65rem;
+  font-weight: 700;
+  color: var(--copper-deep);
+  text-decoration: none;
+}
+
 .session {
   display: flex;
   flex-direction: column;

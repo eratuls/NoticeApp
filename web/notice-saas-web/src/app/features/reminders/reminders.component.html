@@ -1,0 +1,89 @@
+<section class="page">
+  <header class="intro">
+    <p class="brand-line">NoticeSaaS</p>
+    <h1>All reminders</h1>
+    <p class="lede">View pending and completed follow-ups across Income Tax notices.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" [class.active]="status() === 'Pending'" (click)="setStatus('Pending')">
+      Pending
+      <span>{{ data()?.pendingCount ?? 0 }}</span>
+    </button>
+    <button type="button" role="tab" [class.active]="status() === 'Done'" (click)="setStatus('Done')">
+      Done
+      <span>{{ data()?.doneCount ?? 0 }}</span>
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <input
+      type="search"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)"
+      (keyup.enter)="load()"
+      placeholder="Proceeding id / PAN / description"
+    />
+    <select [ngModel]="priority()" (ngModelChange)="priority.set($event); load()">
+      @for (p of priorities; track p) {
+        <option [value]="p">{{ p || 'All priorities' }}</option>
+      }
+    </select>
+    <button type="button" class="ghost" (click)="load()">Search</button>
+  </div>
+
+  @if (loading()) {
+    <p class="state">Loading reminders…</p>
+  } @else if (error()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (data()) {
+    @if (data(); as d) {
+      @if (d.reminders.length === 0) {
+        <p class="state">No reminders in this tab.</p>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Proceeding / Ref</th>
+                <th>PAN</th>
+                <th>Priority</th>
+                <th>Description</th>
+                <th>Due on</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of d.reminders; track r.id) {
+                <tr>
+                  <td>{{ r.module }}</td>
+                  <td>
+                    <p class="ref">{{ r.proceedingId || '—' }}</p>
+                    <p class="sub">{{ r.documentReferenceId || '' }}</p>
+                  </td>
+                  <td>{{ r.assesseeIdentifier || '—' }}</td>
+                  <td>
+                    <span class="priority" [attr.data-priority]="r.priority">{{ r.priority }}</span>
+                  </td>
+                  <td>{{ r.description }}</td>
+                  <td>
+                    <span [attr.data-overdue]="r.isOverdue">{{ r.dueOn }}</span>
+                  </td>
+                  <td class="actions">
+                    @if (r.noticeId) {
+                      <a [routerLink]="['/notices', r.noticeId]">Notice</a>
+                    }
+                    @if (!r.isDone) {
+                      <button type="button" class="ghost" (click)="complete(r.id)">Done</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</section>

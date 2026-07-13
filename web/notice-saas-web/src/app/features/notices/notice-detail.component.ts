@@ -41,8 +41,14 @@ export class NoticeDetailComponent implements OnInit {
   readonly saving = signal(false);
   readonly commentBody = signal('');
   readonly status = signal('Open');
+  readonly reminderDue = signal('');
+  readonly reminderPriority = signal('Medium');
+  readonly reminderNote = signal('');
+  readonly reminderSaving = signal(false);
+  readonly reminderMessage = signal('');
 
   readonly statuses = ['New', 'Open', 'InProgress', 'Replied', 'Closed'];
+  readonly priorities = ['High', 'Medium', 'Low'];
 
   ngOnInit(): void {
     this.load();
@@ -61,6 +67,12 @@ export class NoticeDetailComponent implements OnInit {
       next: (n) => {
         this.notice.set(n);
         this.status.set(n.status);
+        if (!this.reminderDue()) {
+          this.reminderDue.set(n.responseDueDate || new Date().toISOString().slice(0, 10));
+        }
+        if (!this.reminderNote()) {
+          this.reminderNote.set(n.description);
+        }
         this.loading.set(false);
       },
       error: () => {
@@ -106,6 +118,35 @@ export class NoticeDetailComponent implements OnInit {
           this.load();
         },
         error: () => this.error.set('Unable to add comment.')
+      });
+  }
+
+  setReminder(): void {
+    const n = this.notice();
+    const description = this.reminderNote().trim();
+    const dueOn = this.reminderDue();
+    if (!n || !description || !dueOn) {
+      return;
+    }
+
+    this.reminderSaving.set(true);
+    this.reminderMessage.set('');
+    this.http
+      .post(`${environment.apiBaseUrl}/api/v1/reminders`, {
+        noticeId: n.id,
+        description,
+        priority: this.reminderPriority(),
+        dueOn
+      })
+      .subscribe({
+        next: () => {
+          this.reminderSaving.set(false);
+          this.reminderMessage.set('Reminder scheduled.');
+        },
+        error: () => {
+          this.reminderSaving.set(false);
+          this.reminderMessage.set('Unable to schedule reminder.');
+        }
       });
   }
 }
