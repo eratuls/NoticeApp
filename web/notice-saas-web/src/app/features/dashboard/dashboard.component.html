@@ -1,16 +1,84 @@
-<section class="home">
+<section class="dash">
   @if (user(); as u) {
-    <p class="brand-line">NoticeSaaS</p>
-    <h1>Good to have you back, {{ u.firstName }}.</h1>
-    <p class="lede">
-      This workspace will hold your clients, Income Tax notices, and deadlines.
-      Summary metrics arrive next—for now, move through Team, Clients, and Reminders from the rail.
-    </p>
+    <header class="intro">
+      <p class="brand-line">NoticeSaaS</p>
+      <h1>Workspace overview</h1>
+      <p class="lede">
+        {{ u.organizationName }} · Income Tax module. Counts refresh from your live workspace data.
+      </p>
+    </header>
+  }
 
-    <div class="path">
-      <p class="path-label">You are signed in as</p>
-      <p class="path-value">{{ u.email }} · {{ u.role }}</p>
-      <p class="path-org">{{ u.organizationName }}</p>
-    </div>
+  <div class="filters" role="group" aria-label="Period">
+    <button type="button" [class.active]="period() === 'Monthly'" (click)="setPeriod('Monthly')">Monthly</button>
+    <button type="button" [class.active]="period() === 'Weekly'" (click)="setPeriod('Weekly')">Weekly</button>
+  </div>
+
+  @if (loading()) {
+    <p class="state">Loading summary…</p>
+  } @else if (error()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (summary()) {
+    @if (summary(); as s) {
+      <section class="metrics" aria-label="Summary">
+        <article>
+          <p class="label">Clients</p>
+          <p class="value">{{ s.clients.total }}</p>
+          <p class="meta">+{{ s.clients.addedInPeriod }} this {{ s.period.toLowerCase() }} window</p>
+        </article>
+        <article>
+          <p class="label">Team</p>
+          <p class="value">{{ s.team.total }}</p>
+          <p class="meta">{{ s.team.active }} active · {{ s.team.inactive }} inactive</p>
+        </article>
+        <article>
+          <p class="label">Notices</p>
+          <p class="value">{{ s.notices.total }}</p>
+          <p class="meta">{{ s.notices.selfPan }} on client PANs</p>
+        </article>
+      </section>
+
+      <section class="tasks" aria-label="Manage tasks">
+        <div class="tasks-head">
+          <h2>Manage tasks</h2>
+          <p>Notice buckets for {{ s.module }}</p>
+        </div>
+
+        <ul>
+          <li data-tone="new">
+            <span class="tone"></span>
+            <div>
+              <p class="task-label">New notices</p>
+              <p class="task-help">Awaiting first review</p>
+            </div>
+            <strong>{{ s.tasks.new }}</strong>
+          </li>
+          <li data-tone="ongoing">
+            <span class="tone"></span>
+            <div>
+              <p class="task-label">Ongoing</p>
+              <p class="task-help">Open, in progress, or replied</p>
+            </div>
+            <strong>{{ s.tasks.ongoing }}</strong>
+          </li>
+          <li data-tone="closed">
+            <span class="tone"></span>
+            <div>
+              <p class="task-label">Closed</p>
+              <p class="task-help">Completed in this workspace</p>
+            </div>
+            <strong>{{ s.tasks.closed }}</strong>
+          </li>
+          <li data-tone="overdue">
+            <span class="tone"></span>
+            <div>
+              <p class="task-label">Overdue</p>
+              <p class="task-help">Past response due date</p>
+            </div>
+            <strong>{{ s.tasks.overdue }}</strong>
+          </li>
+        </ul>
+      </section>
+    }
   }
 </section>

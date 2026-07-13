@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NoticeSaaS.Application.Auth;
+using NoticeSaaS.Application.Dashboard;
 using NoticeSaaS.Infrastructure.Auth;
+using NoticeSaaS.Infrastructure.Dashboard;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -37,6 +39,7 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString));
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services
