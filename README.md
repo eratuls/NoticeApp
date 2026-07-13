@@ -1,4 +1,4 @@
-# NoticeSaaS — Day 2 (EF Core tenancy)
+# NoticeSaaS — Day 3 (Auth + shell)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
@@ -8,9 +8,9 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 NoticeSaaS.sln
 ├── src/
 │   ├── NoticeSaaS.Api              # HTTP API
-│   ├── NoticeSaaS.Application      # Use cases
+│   ├── NoticeSaaS.Application      # Use cases / contracts
 │   ├── NoticeSaaS.Domain           # Entities
-│   ├── NoticeSaaS.Infrastructure   # EF Core, Blob, Key Vault
+│   ├── NoticeSaaS.Infrastructure   # EF Core, auth, JWT
 │   └── NoticeSaaS.Workers          # Sync jobs (Week 3)
 ├── web/
 │   └── notice-saas-web             # Angular
@@ -19,21 +19,17 @@ NoticeSaaS.sln
     └── NoticeSaaS.UnitTests
 ```
 
-## Day 1 done when
+## Day 1–2 done when
 
-- [x] Solution builds
-- [x] `GET /health` and `GET /api/health` return OK
-- [x] Application Insights package wired (set connection string when Azure resource exists)
-- [x] Angular app calls health API and shows status
-- [x] CORS allows `http://localhost:4200`
+- [x] Solution builds, health endpoints, Angular ↔ API
+- [x] Docker SQL + EF Core tenancy + seed admin
 
-## Day 2 done when
+## Day 3 done when
 
-- [x] Local SQL Server via Docker Compose
-- [x] `ConnectionStrings:Default` in Development appsettings
-- [x] EF Core entities: Organizations, Users, OrganizationMembers, Roles
-- [x] Migration applied on API startup (Development)
-- [x] Seeded system roles + demo org + admin user
+- [x] Login API with JWT
+- [x] Single active session + force logout conflict
+- [x] Session idle timer (default 10 minutes)
+- [x] Angular login, auth guard, shell + session countdown
 
 ### Seed admin (Development)
 
@@ -43,6 +39,17 @@ NoticeSaaS.sln
 | Password | `Admin@12345` |
 | Organization | NoticeSaaS Demo (Owner) |
 
+### Auth API
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/api/auth/login` | Body: `{ email, password, forceLogout }` |
+| POST | `/api/auth/logout` | Bearer required |
+| GET | `/api/auth/session` | Remaining TTL + user |
+| GET | `/api/auth/me` | Current user |
+
+`409 SESSION_ACTIVE` when another session exists and `forceLogout` is false.
+
 ## Local SQL Server (Docker)
 
 ```powershell
@@ -50,71 +57,30 @@ cd d:\NoticeApp
 docker compose up -d
 ```
 
-Development connection string is in `appsettings.Development.json` (`ConnectionStrings:Default`).
-
-| Setting | Value |
-|---------|--------|
-| Server | `localhost,1433` |
-| Database | `NoticeSaaS` |
-| User | `sa` |
-| Password | matches `MSSQL_SA_PASSWORD` in `docker-compose.yml` |
-
-Production/staging: leave `ConnectionStrings:Default` empty in `appsettings.json` and set it via Azure App Settings or Key Vault.
-
-### EF migrations
-
-```powershell
-dotnet ef migrations add <Name> --project src/NoticeSaaS.Infrastructure --startup-project src/NoticeSaaS.Api
-dotnet ef database update --project src/NoticeSaaS.Infrastructure --startup-project src/NoticeSaaS.Api
-```
-
 ## Open in Visual Studio
 
-Open `NoticeSaaS.sln` — Solution Explorer should show **src** (.NET) and **web** → **notice-saas-web** (Angular).
+Open `NoticeSaaS.sln` — **src** (.NET) and **web → notice-saas-web** (Angular).
 
-Requires Visual Studio 2022 with the **Node.js development** / **JavaScript and TypeScript** workload, plus Node.js installed.
+1. Right-click solution → **Configure Startup Projects…** → **Multiple startup projects**
+2. Set **NoticeSaaS.Api** and **notice-saas-web** to **Start**
+3. On the toolbar profile for the API, choose **http** (port **5166**) — not IIS Express
+4. Start (F5), then open **http://localhost:4200** (Angular). Do not use `https://localhost:44353` — that is the API root and returns 404 by design.
 
-To run API + web together:
-
-1. Right-click the **solution** → **Configure Startup Projects…**
-2. Choose **Multiple startup projects**
-3. Set **NoticeSaaS.Api** and **notice-saas-web** to **Start**
-4. Press **F5** (or Ctrl+F5)
-
-First time: if prompted, restore npm packages on `notice-saas-web` (`npm install`).
-
-If the web project is missing or unloadable, install/repair the Node.js workload and reopen the solution.
-
-**API** (https://localhost:7238 or http://localhost:5166):
+## Run locally (CLI)
 
 ```powershell
+docker compose up -d
 cd src/NoticeSaaS.Api
 dotnet run
 ```
-
-**Angular:**
 
 ```powershell
 cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 — you should see **API OK**.
+Open http://localhost:4200 → login → dashboard shell.
 
-## Application Insights
+## Next — Day 4
 
-In `src/NoticeSaaS.Api/appsettings.Development.json` (or Azure App Settings):
-
-```json
-{
-  "ApplicationInsights": {
-    "ConnectionString": "InstrumentationKey=...;IngestionEndpoint=..."
-  }
-}
-```
-
-Leave empty for local-only logging until the Azure resource is created.
-
-## Next — Day 3
-
-Auth (login), single-session rules, and Angular main shell.
+Dashboard summary cards + notice task buckets (API + UI).

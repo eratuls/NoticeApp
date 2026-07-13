@@ -1,0 +1,66 @@
+.home {
+  max-width: 40rem;
+  position: relative;
+}
+
+.home::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 3px;
+  background: var(--copper);
+}
+
+.brand-line {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--copper-deep);
+}
+
+h1 {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.5vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.lede {
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.path {
+  margin-top: 2.25rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.path-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.path-value {
+  margin: 0.45rem 0 0;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.path-org {
+  margin: 0.3rem 0 0;
+  color: var(--ink-soft);
+}
