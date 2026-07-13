@@ -52,7 +52,9 @@
               <td>
                 <span class="status" [attr.data-active]="c.isActive">{{ c.isActive ? 'Active' : 'Inactive' }}</span>
               </td>
-              <td>{{ c.noticeCount }}</td>
+              <td>
+                <a class="notices-link" [routerLink]="['/clients', c.id, 'notices']">{{ c.noticeCount }}</a>
+              </td>
               <td>{{ c.syncFrequency }}</td>
               <td>{{ c.nextSyncAtUtc ? (c.nextSyncAtUtc | date: 'medium') : '—' }}</td>
             </tr>

@@ -1,0 +1,83 @@
+<section class="page">
+  <p class="crumb"><a routerLink="/clients">Clients</a> / Notices</p>
+
+  @if (loading()) {
+    <p class="state">Loading notices…</p>
+  } @else if (error()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (data()) {
+    @if (data(); as d) {
+      <header class="intro">
+        <p class="brand-line">NoticeSaaS</p>
+        <h1>{{ d.clientName }}</h1>
+        <p class="lede">{{ d.clientPan }} · {{ d.isActive ? 'Active' : 'Inactive' }}</p>
+      </header>
+
+      <div class="tabs" role="tablist">
+        @for (tab of tabs; track tab.key) {
+          <button
+            type="button"
+            role="tab"
+            [class.active]="kind() === tab.key"
+            (click)="setKind(tab.key)"
+          >
+            {{ tab.label }}
+            <span>{{ countFor(tab.key) }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="toolbar">
+        <input
+          type="search"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          (keyup.enter)="load()"
+          placeholder="Search DIN / section / description"
+        />
+        <button type="button" class="ghost" (click)="load()">Search</button>
+      </div>
+
+      @if (d.notices.length === 0) {
+        <p class="state">No items in this tab.</p>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Section / description</th>
+                <th>DIN</th>
+                <th>FY</th>
+                <th>Served</th>
+                <th>Due</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (n of d.notices; track n.id) {
+                <tr>
+                  <td>
+                    <p class="section">{{ n.section }}</p>
+                    <p class="desc">{{ n.description }}</p>
+                  </td>
+                  <td>{{ n.documentReferenceId || '—' }}</td>
+                  <td>{{ n.financialYear || '—' }}</td>
+                  <td>{{ n.servedDate || '—' }}</td>
+                  <td>{{ n.responseDueDate || '—' }}</td>
+                  <td>
+                    <span class="pill" [attr.data-overdue]="n.isOverdue">{{ n.isOverdue ? 'Overdue' : n.status }}</span>
+                  </td>
+                  <td>
+                    <a [routerLink]="['/notices', n.id]">View</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="footer">Showing {{ d.notices.length }}</p>
+      }
+    }
+  }
+</section>

@@ -220,6 +220,9 @@ public static class DatabaseSeeder
         }
 
         var desiredNotices = BuildDemoNotices(today, now);
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE Notices SET Kind = N'Notice' WHERE Kind = N'' OR Kind IS NULL",
+            cancellationToken);
         var desiredIds = desiredNotices.Select(n => n.Id).ToArray();
         var existingNotices = await db.Notices
             .Where(n => desiredIds.Contains(n.Id))
@@ -236,6 +239,7 @@ public static class DatabaseSeeder
             existing.OrganizationId = desired.OrganizationId;
             existing.ClientId = desired.ClientId;
             existing.Module = desired.Module;
+            existing.Kind = desired.Kind;
             existing.Section = desired.Section;
             existing.Description = desired.Description;
             existing.FinancialYear = desired.FinancialYear;
@@ -283,7 +287,8 @@ public static class DatabaseSeeder
         MakeNotice(18, "142(2)", "Special audit closed", NoticeWorkflowStatus.Closed, today.AddDays(-44), today.AddDays(-35), now.AddDays(-33)),
         MakeNotice(19, "147", "Reassessment closed", NoticeWorkflowStatus.Closed, today.AddDays(-42), today.AddDays(-32), now.AddDays(-30)),
         MakeNotice(20, "246A", "Appeal filed closed", NoticeWorkflowStatus.Closed, today.AddDays(-38), today.AddDays(-28), now.AddDays(-26)),
-        MakeNotice(21, "250", "CIT(A) order closed", NoticeWorkflowStatus.Closed, today.AddDays(-36), today.AddDays(-26), now.AddDays(-24))
+        MakeNotice(21, "250", "CIT(A) order closed", NoticeWorkflowStatus.Closed, today.AddDays(-36), today.AddDays(-26), now.AddDays(-24)),
+        MakeNotice(22, "156", "Outstanding demand order", NoticeWorkflowStatus.Open, today.AddDays(-15), today.AddDays(10), kind: NoticeKind.DirectOrder)
     ];
 
     private static Notice MakeNotice(
@@ -293,13 +298,15 @@ public static class DatabaseSeeder
         NoticeWorkflowStatus status,
         DateOnly served,
         DateOnly due,
-        DateTimeOffset? closedAt = null) =>
+        DateTimeOffset? closedAt = null,
+        NoticeKind kind = NoticeKind.Notice) =>
         new()
         {
             Id = Guid.Parse($"55555555-5555-5555-5555-{index:D12}"),
             OrganizationId = SeedOrganizationId,
             ClientId = SeedClientId,
             Module = ComplianceModule.IncomeTax,
+            Kind = kind,
             Section = section,
             Description = description,
             FinancialYear = "2024-25",
