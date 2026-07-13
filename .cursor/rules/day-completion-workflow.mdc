@@ -1,0 +1,16 @@
+---
+description: End-of-day workflow — PR, auto-merge, then start next day plan
+alwaysApply: true
+---
+
+# Day completion workflow
+
+When a day of work is done (or the user says to raise a PR / finish the day):
+
+1. **Ensure branch is ready** — commit remaining day work on `feature/dayN-...` if the user asked to commit; push with `-u` if needed.
+2. **Raise PR into `main`** — `gh pr create --base main` with a focused title/body (summary + test plan).
+3. **Auto-merge** — merge immediately after create (prefer `gh pr merge --merge` when checks allow; use `--auto` if branch protection requires pending checks). Do not leave the day PR open unless merge is blocked.
+4. **Sync local main** — `git checkout main && git pull origin main`; delete the local feature branch if no longer needed.
+5. **Pick the next day** — read `README.md` “Next — Day N” and `.cursor/docs/` (especially `INCOME_TAX_APP_FLOW.md` build order). Create `feature/dayN-...` from updated `main`, update README for that day, and start implementing unless the user only wanted the plan.
+
+Do not wait for a separate “merge” or “what’s next” prompt when the user asks to finish a day this way.
