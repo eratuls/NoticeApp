@@ -1,0 +1,42 @@
+<div class="workspace">
+  <aside class="rail">
+    <a class="brand" routerLink="/dashboard">
+      <span class="brand-mark">N</span>
+      <span class="brand-name">NoticeSaaS</span>
+    </a>
+
+    <nav aria-label="Primary">
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/team" routerLinkActive="active">Team</a>
+      <a routerLink="/clients" routerLinkActive="active">Clients</a>
+      <a routerLink="/reminders" routerLinkActive="active">Reminders</a>
+    </nav>
+
+    <div class="rail-foot">
+      @if (user(); as u) {
+        <p class="who">{{ u.firstName }} {{ u.lastName }}</p>
+        <p class="role">{{ u.role }} · {{ u.organizationName }}</p>
+      }
+      <button type="button" class="logout" (click)="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="strip">
+      <div class="strip-copy">
+        <p class="strip-kicker">Active workspace</p>
+        @if (user(); as u) {
+          <p class="strip-title">{{ u.organizationName }}</p>
+        }
+      </div>
+      <div class="session" title="Session remaining">
+        <span class="session-label">Session</span>
+        <span class="session-time">{{ remainingLabel() }}</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,0 +1,16 @@
+<section class="home">
+  @if (user(); as u) {
+    <p class="brand-line">NoticeSaaS</p>
+    <h1>Good to have you back, {{ u.firstName }}.</h1>
+    <p class="lede">
+      This workspace will hold your clients, Income Tax notices, and deadlines.
+      Summary metrics arrive next—for now, move through Team, Clients, and Reminders from the rail.
+    </p>
+
+    <div class="path">
+      <p class="path-label">You are signed in as</p>
+      <p class="path-value">{{ u.email }} · {{ u.role }}</p>
+      <p class="path-org">{{ u.organizationName }}</p>
+    </div>
+  }
+</section>

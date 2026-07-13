@@ -1,4 +1,5 @@
 using NoticeSaaS.Infrastructure;
+using NoticeSaaS.Infrastructure.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AngularDev");
+app.UseAuthentication();
+app.UseMiddleware<SessionActivityMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");

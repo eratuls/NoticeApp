@@ -1,44 +1,11 @@
-import { Component, OnInit, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../environments/environment';
-
-type HealthResponse = {
-  status: string;
-  service: string;
-  utc: string;
-};
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
+  styles: ':host { display: block; min-height: 100vh; }'
 })
-export class AppComponent implements OnInit {
-  readonly title = 'NoticeSaaS';
-  readonly apiStatus = signal<'checking' | 'ok' | 'error'>('checking');
-  readonly detail = signal<string>('');
-
-  constructor(private readonly http: HttpClient) {}
-
-  ngOnInit(): void {
-    this.checkApi();
-  }
-
-  checkApi(): void {
-    this.apiStatus.set('checking');
-    this.detail.set('');
-
-    this.http.get<HealthResponse>(`${environment.apiBaseUrl}/api/health`).subscribe({
-      next: (res) => {
-        this.apiStatus.set('ok');
-        this.detail.set(`${res.service} · ${res.utc}`);
-      },
-      error: (err: unknown) => {
-        this.apiStatus.set('error');
-        const message = err instanceof Error ? err.message : 'Cannot reach API';
-        this.detail.set(message);
-      }
-    });
-  }
-}
+export class AppComponent {}

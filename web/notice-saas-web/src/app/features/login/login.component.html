@@ -1,0 +1,69 @@
+<div class="login">
+  <section class="stage" aria-label="NoticeSaaS">
+    <div class="atmosphere" aria-hidden="true"></div>
+    <div class="stack" aria-hidden="true">
+      <div class="sheet sheet-a"></div>
+      <div class="sheet sheet-b"></div>
+      <div class="sheet sheet-c">
+        <span class="sheet-rule"></span>
+        <span class="sheet-rule"></span>
+        <span class="sheet-rule short"></span>
+      </div>
+    </div>
+
+    <div class="copy">
+      <p class="brand">NoticeSaaS</p>
+      <h1>Statutory notice work, kept in one workspace.</h1>
+      <p class="lede">Track Income Tax notices, deadlines, and replies for your firm—without the portal chaos.</p>
+    </div>
+  </section>
+
+  <form class="gate" (ngSubmit)="submit(false)">
+    <p class="gate-kicker">Workspace sign-in</p>
+    <label>
+      <span>Email</span>
+      <input name="email" type="email" [(ngModel)]="email" autocomplete="username" required />
+    </label>
+    <label>
+      <span>Password</span>
+      <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required />
+    </label>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <div class="cta">
+      <button type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Enter workspace' }}</button>
+    </div>
+    <p class="hint">Dev seed: admin&#64;noticesaas.local / Admin&#64;12345</p>
+  </form>
+</div>
+
+@if (conflict(); as c) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+    <div class="modal">
+      <h2 id="conflict-title">Session already active</h2>
+      <p>{{ c.message }}</p>
+      <dl>
+        <div>
+          <dt>IP</dt>
+          <dd>{{ c.session.ipAddress || 'Unknown' }}</dd>
+        </div>
+        <div>
+          <dt>Logged in</dt>
+          <dd>{{ c.session.loggedInAtUtc | date: 'medium' }}</dd>
+        </div>
+        <div>
+          <dt>Last activity</dt>
+          <dd>{{ c.session.lastActivityAtUtc | date: 'medium' }}</dd>
+        </div>
+      </dl>
+      <p class="tip">Don't share credentials. Add team members instead.</p>
+      <div class="actions">
+        <button type="button" class="ghost" (click)="dismissConflict()" [disabled]="busy()">Check again later</button>
+        <button type="button" (click)="submit(true)" [disabled]="busy()">Force logout</button>
+      </div>
+    </div>
+  </div>
+}
