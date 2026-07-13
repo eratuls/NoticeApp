@@ -12,6 +12,7 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Notice> Notices => Set<Notice>();
+    public DbSet<PortalCredential> PortalCredentials => Set<PortalCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

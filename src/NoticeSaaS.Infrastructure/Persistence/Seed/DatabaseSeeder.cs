@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,11 +26,12 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(
         NoticeSaaSDbContext db,
         ILogger logger,
+        IDataProtector? portalCredentialProtector = null,
         CancellationToken cancellationToken = default)
     {
         await SeedRolesAsync(db, cancellationToken);
         await SeedAdminWorkspaceAsync(db, logger, cancellationToken);
-        await SeedDemoClientsAndNoticesAsync(db, logger, cancellationToken);
+        await SeedDemoClientsAndNoticesAsync(db, logger, portalCredentialProtector, cancellationToken);
     }
 
     private static async Task SeedRolesAsync(NoticeSaaSDbContext db, CancellationToken cancellationToken)
@@ -145,6 +147,7 @@ public static class DatabaseSeeder
     private static async Task SeedDemoClientsAndNoticesAsync(
         NoticeSaaSDbContext db,
         ILogger logger,
+        IDataProtector? portalCredentialProtector,
         CancellationToken cancellationToken)
     {
         if (!await db.Organizations.AnyAsync(o => o.Id == SeedOrganizationId, cancellationToken))
@@ -155,6 +158,8 @@ public static class DatabaseSeeder
 
         var now = DateTimeOffset.UtcNow;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        const string portalUser = "AABCM1234F";
+        const SyncFrequency syncFrequency = SyncFrequency.Daily;
 
         var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == SeedClientId, cancellationToken);
         if (client is null)
@@ -166,8 +171,12 @@ public static class DatabaseSeeder
                 Name = "Marshal Quarries And Granites Pvt Ltd",
                 Pan = "AABCM1234F",
                 Module = ComplianceModule.IncomeTax,
+                SyncFrequency = syncFrequency,
+                PortalUsername = portalUser,
                 IsActive = true,
-                CreatedAtUtc = now.AddDays(-12)
+                CreatedAtUtc = now.AddDays(-12),
+                LastSyncAtUtc = now.AddDays(-1),
+                NextSyncAtUtc = now.AddDays(1)
             };
             db.Clients.Add(client);
         }
@@ -177,7 +186,37 @@ public static class DatabaseSeeder
             client.Name = "Marshal Quarries And Granites Pvt Ltd";
             client.Pan = "AABCM1234F";
             client.Module = ComplianceModule.IncomeTax;
+            client.SyncFrequency = syncFrequency;
+            client.PortalUsername = portalUser;
             client.IsActive = true;
+            client.LastSyncAtUtc ??= now.AddDays(-1);
+            client.NextSyncAtUtc ??= now.AddDays(1);
+        }
+
+        if (portalCredentialProtector is not null)
+        {
+            var seedCredentialId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+            var credential = await db.PortalCredentials.FirstOrDefaultAsync(
+                c => c.Id == seedCredentialId || c.ClientId == SeedClientId,
+                cancellationToken);
+            if (credential is null)
+            {
+                db.PortalCredentials.Add(new PortalCredential
+                {
+                    Id = seedCredentialId,
+                    ClientId = SeedClientId,
+                    Username = portalUser,
+                    PasswordProtected = portalCredentialProtector.Protect("DemoPortal@123"),
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now
+                });
+            }
+            else
+            {
+                credential.Username = portalUser;
+                credential.PasswordProtected = portalCredentialProtector.Protect("DemoPortal@123");
+                credential.UpdatedAtUtc = now;
+            }
         }
 
         var desiredNotices = BuildDemoNotices(today, now);
@@ -208,11 +247,18 @@ public static class DatabaseSeeder
             existing.ClosedAtUtc = desired.ClosedAtUtc;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
-        logger.LogInformation(
-            "Ensured demo client {Pan} with {NoticeCount} Income Tax notices",
-            client.Pan,
-            desiredNotices.Count);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation(
+                "Ensured demo client {Pan} with {NoticeCount} Income Tax notices",
+                client.Pan,
+                desiredNotices.Count);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+        }
     }
 
     private static List<Notice> BuildDemoNotices(DateOnly today, DateTimeOffset now) =>

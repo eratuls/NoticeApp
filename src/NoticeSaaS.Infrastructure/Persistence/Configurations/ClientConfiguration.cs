@@ -12,12 +12,20 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Pan).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.CaPan).HasMaxLength(10);
+        builder.Property(x => x.PortalUsername).HasMaxLength(100);
         builder.Property(x => x.Module).HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.SyncFrequency).HasConversion<string>().HasMaxLength(32);
         builder.HasIndex(x => new { x.OrganizationId, x.Pan }).IsUnique();
 
         builder.HasOne(x => x.Organization)
             .WithMany()
             .HasForeignKey(x => x.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.Credential)
+            .WithOne(x => x.Client)
+            .HasForeignKey<PortalCredential>(x => x.ClientId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
