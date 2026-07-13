@@ -1,14 +1,15 @@
-# NoticeSaaS — Day 7 (Reminders & notifications)
+# NoticeSaaS — Day 8 (Income Tax sync worker)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 7 done when
+## Day 8 done when
 
-- [x] Reminders API with Pending/Done tabs, priority + search filters
-- [x] Create reminder from notice detail (creates in-app notification)
-- [x] Notifications API with unread badge, mark read / mark all read
-- [x] Angular Reminders page + shell Alerts panel
-- [x] Demo reminders and notifications seeded
+- [x] `SyncJob` / `SyncJobLog` entities + migration; enqueue due clients by `NextSyncAtUtc`
+- [x] Trigger sync from Clients UI / API (password-only portal accounts)
+- [x] Worker decrypts `PortalCredential` in-process; mock password-only portal adapter (Playwright-ready interface)
+- [x] Fetch notices, upsert into `Notices` by `DocumentReferenceId`; update `LastSyncAtUtc` / `NextSyncAtUtc`
+- [x] Sync status visible on client list (Succeeded / Failed + error)
+- [x] Endpoint tests for enqueue + notice upsert / idempotent dedupe
 
 ### Auth
 
@@ -25,12 +26,17 @@ dotnet run
 ```
 
 ```powershell
+cd src/NoticeSaaS.Workers
+dotnet run
+```
+
+```powershell
 cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Reminders, or notice detail → Set reminder · Alerts in the top strip.
+Open http://localhost:4200 → Clients → **Sync now** on a password-only account.
 
-## Next — Day 8
+## Next — Day 9
 
-Income Tax sync worker (password-only portal accounts).
+Usage & Limits (sync credits / assessee quotas).

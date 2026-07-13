@@ -153,6 +153,56 @@ td {
   color: var(--muted);
 }
 
+.sync-banner {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--copper);
+  background: color-mix(in srgb, var(--copper) 12%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.sync-status {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sync-status[data-status='Succeeded'] {
+  color: var(--ok);
+}
+
+.sync-status[data-status='Failed'] {
+  color: var(--danger);
+}
+
+.sync-status[data-status='Running'],
+.sync-status[data-status='Pending'] {
+  color: var(--copper-deep);
+}
+
+.sync-error {
+  margin: 0.25rem 0 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.sync-btn {
+  white-space: nowrap;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.7rem;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

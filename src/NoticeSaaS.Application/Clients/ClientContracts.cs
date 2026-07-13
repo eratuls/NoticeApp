@@ -14,7 +14,10 @@ public sealed record ClientListItemDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? LastSyncAtUtc,
     DateTimeOffset? NextSyncAtUtc,
-    int NoticeCount);
+    int NoticeCount,
+    string? LatestSyncStatus = null,
+    string? LatestSyncError = null,
+    int? LatestNoticesUpserted = null);
 
 public sealed record CreateClientRequest(
     string Name,

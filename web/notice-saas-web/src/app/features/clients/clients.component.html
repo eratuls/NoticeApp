@@ -20,6 +20,10 @@
     <button type="button" class="primary" (click)="openForm()">Add client</button>
   </div>
 
+  @if (syncMessage()) {
+    <p class="sync-banner" role="status">{{ syncMessage() }}</p>
+  }
+
   @if (loading()) {
     <p class="state">Loading clients…</p>
   } @else if (error()) {
@@ -34,10 +38,11 @@
             <th>Client / PAN</th>
             <th>Portal user</th>
             <th>Last sync</th>
-            <th>Status</th>
+            <th>Sync job</th>
             <th>Notices</th>
-            <th>Sync</th>
+            <th>Schedule</th>
             <th>Next sync</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -50,13 +55,30 @@
               <td>{{ c.portalUsername || '—' }}</td>
               <td>{{ c.lastSyncAtUtc ? (c.lastSyncAtUtc | date: 'medium') : 'Never' }}</td>
               <td>
-                <span class="status" [attr.data-active]="c.isActive">{{ c.isActive ? 'Active' : 'Inactive' }}</span>
+                @if (c.latestSyncStatus) {
+                  <span class="sync-status" [attr.data-status]="c.latestSyncStatus">{{ c.latestSyncStatus }}</span>
+                  @if (c.latestSyncError) {
+                    <p class="sync-error" [title]="c.latestSyncError">{{ c.latestSyncError }}</p>
+                  }
+                } @else {
+                  <span class="muted">—</span>
+                }
               </td>
               <td>
                 <a class="notices-link" [routerLink]="['/clients', c.id, 'notices']">{{ c.noticeCount }}</a>
               </td>
               <td>{{ c.syncFrequency }}</td>
               <td>{{ c.nextSyncAtUtc ? (c.nextSyncAtUtc | date: 'medium') : '—' }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="ghost sync-btn"
+                  (click)="triggerSync(c)"
+                  [disabled]="syncingId() === c.id || !c.isActive"
+                >
+                  {{ syncingId() === c.id ? 'Syncing…' : 'Sync now' }}
+                </button>
+              </td>
             </tr>
           }
         </tbody>

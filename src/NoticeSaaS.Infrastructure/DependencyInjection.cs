@@ -12,12 +12,14 @@ using NoticeSaaS.Application.Dashboard;
 using NoticeSaaS.Application.Notices;
 using NoticeSaaS.Application.Notifications;
 using NoticeSaaS.Application.Reminders;
+using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Infrastructure.Auth;
 using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
 using NoticeSaaS.Infrastructure.Notices;
 using NoticeSaaS.Infrastructure.Notifications;
 using NoticeSaaS.Infrastructure.Reminders;
+using NoticeSaaS.Infrastructure.Sync;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -25,7 +27,7 @@ namespace NoticeSaaS.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(
+    public static IServiceCollection AddPersistence(
         this IServiceCollection services,
         IConfiguration configuration)
     {
@@ -36,6 +38,38 @@ public static class DependencyInjection
                 "Connection string 'Default' is missing. Set ConnectionStrings:Default for the current environment.");
         }
 
+        services.AddDbContext<NoticeSaaSDbContext>(options =>
+            options.UseSqlServer(connectionString));
+
+        var keysPath = configuration["DataProtection:KeysPath"];
+        if (string.IsNullOrWhiteSpace(keysPath))
+        {
+            keysPath = Path.Combine(Path.GetTempPath(), "NoticeSaaS", "dp-keys");
+        }
+
+        Directory.CreateDirectory(keysPath);
+        services.AddDataProtection()
+            .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+            .SetApplicationName("NoticeSaaS");
+
+        return services;
+    }
+
+    public static IServiceCollection AddSyncServices(this IServiceCollection services)
+    {
+        services.AddSingleton<IIncomeTaxPortalClient, MockIncomeTaxPortalClient>();
+        services.AddScoped<ISyncJobProcessor, SyncJobProcessor>();
+        services.AddScoped<ISyncService, SyncService>();
+        return services;
+    }
+
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddPersistence(configuration);
+        services.AddSyncServices();
+
         services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
         var authOptions = configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
         if (string.IsNullOrWhiteSpace(authOptions.Jwt.SigningKey) || authOptions.Jwt.SigningKey.Length < 32)
@@ -44,10 +78,6 @@ public static class DependencyInjection
                 "Auth:Jwt:SigningKey is missing or shorter than 32 characters.");
         }
 
-        services.AddDbContext<NoticeSaaSDbContext>(options =>
-            options.UseSqlServer(connectionString));
-
-        services.AddDataProtection();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IClientService, ClientService>();

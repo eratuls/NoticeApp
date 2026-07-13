@@ -18,6 +18,18 @@ export interface ClientListItem {
   lastSyncAtUtc: string | null;
   nextSyncAtUtc: string | null;
   noticeCount: number;
+  latestSyncStatus: string | null;
+  latestSyncError: string | null;
+  latestNoticesUpserted: number | null;
+}
+
+export interface SyncJobResult {
+  id: string;
+  clientId: string;
+  status: string;
+  trigger: string;
+  noticesUpserted: number;
+  errorMessage: string | null;
 }
 
 @Component({
@@ -38,6 +50,8 @@ export class ClientsComponent implements OnInit {
   readonly saving = signal(false);
   readonly formError = signal('');
   readonly showPassword = signal(false);
+  readonly syncingId = signal<string | null>(null);
+  readonly syncMessage = signal('');
 
   name = '';
   pan = '';
@@ -111,6 +125,30 @@ export class ClientsComponent implements OnInit {
         error: (err) => {
           this.saving.set(false);
           this.formError.set(err?.error?.message ?? 'Unable to add client.');
+        }
+      });
+  }
+
+  triggerSync(client: ClientListItem): void {
+    this.syncingId.set(client.id);
+    this.syncMessage.set('');
+    this.http
+      .post<SyncJobResult>(`${environment.apiBaseUrl}/api/v1/clients/${client.id}/sync`, {})
+      .subscribe({
+        next: (job) => {
+          this.syncingId.set(null);
+          if (job.status === 'Succeeded') {
+            this.syncMessage.set(
+              `Sync succeeded for ${client.name}: ${job.noticesUpserted} notice(s) upserted.`
+            );
+          } else {
+            this.syncMessage.set(job.errorMessage ?? `Sync ${job.status} for ${client.name}.`);
+          }
+          this.load();
+        },
+        error: (err) => {
+          this.syncingId.set(null);
+          this.syncMessage.set(err?.error?.message ?? `Unable to sync ${client.name}.`);
         }
       });
   }
