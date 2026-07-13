@@ -131,6 +131,16 @@ td {
   font-size: 0.85rem;
 }
 
+.notices-link {
+  font-weight: 700;
+  color: var(--copper-deep);
+  text-decoration: none;
+}
+
+.notices-link:hover {
+  text-decoration: underline;
+}
+
 .status {
   font-weight: 700;
   font-size: 0.82rem;

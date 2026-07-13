@@ -1,13 +1,13 @@
-# NoticeSaaS — Day 5 (Clients)
+# NoticeSaaS — Day 6 (Notices)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 5 done when
+## Day 6 done when
 
-- [x] Clients list API with search + module filter
-- [x] Add Client API with sync frequency + encrypted portal credentials
-- [x] Angular Income Tax clients page + Add Client form
-- [x] Demo client seed includes sync schedule + protected password
+- [x] Client notice list API with kind filter + search
+- [x] Notice detail API with status update, timeline, and comments
+- [x] Angular client notices page (tabs) + notice detail page
+- [x] Demo seed includes Direct Order kind
 
 ### Auth
 
@@ -28,8 +28,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Clients.
+Open http://localhost:4200 → Clients → notice count → notice list / detail.
 
-## Next — Day 6
+## Next — Day 7
 
-Client notice list (tabs) + notice detail (manual upload first).
+Reminders and notifications for due / overdue notices.

@@ -1,0 +1,101 @@
+<section class="page">
+  @if (loading()) {
+    <p class="state">Loading notice…</p>
+  } @else if (error() && !notice()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (notice()) {
+    @if (notice(); as n) {
+      <p class="crumb">
+        <a routerLink="/clients">Clients</a> /
+        <a [routerLink]="['/clients', n.clientId, 'notices']">{{ n.clientPan }}</a> /
+        Notice
+      </p>
+
+      <header class="intro">
+        <p class="brand-line">NoticeSaaS</p>
+        <h1>Notice details</h1>
+        <p class="lede">
+          {{ n.proceedingId || 'No proceeding id' }} · Section {{ n.section }}
+          · <span [attr.data-overdue]="n.isOverdue">{{ n.isOverdue ? 'Overdue' : n.status }}</span>
+        </p>
+      </header>
+
+      <div class="actions">
+        <label>
+          <span>Update status</span>
+          <select [ngModel]="status()" (ngModelChange)="status.set($event)">
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="primary" (click)="updateStatus()" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save status' }}
+        </button>
+      </div>
+
+      <section class="meta" aria-label="Notice metadata">
+        <div><span>Assessee</span><strong>{{ n.clientName }}</strong></div>
+        <div><span>PAN</span><strong>{{ n.clientPan }}</strong></div>
+        <div><span>Financial year</span><strong>{{ n.financialYear || '—' }}</strong></div>
+        <div><span>Served on</span><strong>{{ n.servedDate || '—' }}</strong></div>
+        <div><span>Due date</span><strong>{{ n.responseDueDate || '—' }}</strong></div>
+        <div><span>Response submitted</span><strong>{{ n.responseSubmittedDate || '—' }}</strong></div>
+        <div><span>Document reference</span><strong>{{ n.documentReferenceId || '—' }}</strong></div>
+        <div><span>Description</span><strong>{{ n.description }}</strong></div>
+      </section>
+
+      <section class="docs">
+        <h2>Attachments</h2>
+        <p class="empty">No notice PDF uploaded yet. Manual reply upload arrives next.</p>
+      </section>
+
+      <div class="split">
+        <section>
+          <h2>Status timeline</h2>
+          @if (n.timeline.length === 0) {
+            <p class="empty">No status changes yet.</p>
+          } @else {
+            <ul class="timeline">
+              @for (e of n.timeline; track e.id) {
+                <li>
+                  <strong>{{ e.fromStatus ? e.fromStatus + ' → ' : '' }}{{ e.toStatus }}</strong>
+                  <span>{{ e.createdAtUtc | date: 'medium' }}</span>
+                  @if (e.note) {
+                    <p>{{ e.note }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section>
+          <h2>Comments</h2>
+          <div class="comment-form">
+            <textarea
+              rows="3"
+              [ngModel]="commentBody()"
+              (ngModelChange)="commentBody.set($event)"
+              placeholder="Leave an internal remark"
+            ></textarea>
+            <button type="button" class="primary" (click)="addComment()">Comment</button>
+          </div>
+          @if (n.comments.length === 0) {
+            <p class="empty">No comments yet.</p>
+          } @else {
+            <ul class="comments">
+              @for (c of n.comments; track c.id) {
+                <li>
+                  <strong>{{ c.authorName }}</strong>
+                  <span>{{ c.createdAtUtc | date: 'medium' }}</span>
+                  <p>{{ c.body }}</p>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+    }
+  }
+</section>

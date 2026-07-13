@@ -25,3 +25,11 @@ public enum SyncFrequency
     Fortnightly = 3,
     Monthly = 4
 }
+
+public enum NoticeKind
+{
+    Notice = 0,
+    DirectOrder = 1,
+    Manual = 2,
+    CaseStatus = 3
+}

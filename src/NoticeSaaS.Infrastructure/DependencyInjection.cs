@@ -9,9 +9,11 @@ using Microsoft.IdentityModel.Tokens;
 using NoticeSaaS.Application.Auth;
 using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Application.Dashboard;
+using NoticeSaaS.Application.Notices;
 using NoticeSaaS.Infrastructure.Auth;
 using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
+using NoticeSaaS.Infrastructure.Notices;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -45,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<INoticeService, NoticeService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services

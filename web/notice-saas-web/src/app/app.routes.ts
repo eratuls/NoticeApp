@@ -34,6 +34,16 @@ export const routes: Routes = [
           import('./features/clients/clients.component').then((m) => m.ClientsComponent)
       },
       {
+        path: 'clients/:clientId/notices',
+        loadComponent: () =>
+          import('./features/notices/client-notices.component').then((m) => m.ClientNoticesComponent)
+      },
+      {
+        path: 'notices/:noticeId',
+        loadComponent: () =>
+          import('./features/notices/notice-detail.component').then((m) => m.NoticeDetailComponent)
+      },
+      {
         path: 'reminders',
         data: { title: 'Reminders' },
         loadComponent: () =>

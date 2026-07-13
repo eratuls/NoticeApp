@@ -16,6 +16,8 @@ public class Notice
 
     public ComplianceModule Module { get; set; } = ComplianceModule.IncomeTax;
 
+    public NoticeKind Kind { get; set; } = NoticeKind.Notice;
+
     public required string Section { get; set; }
 
     public required string Description { get; set; }
@@ -32,9 +34,15 @@ public class Notice
 
     public DateOnly? ResponseDueDate { get; set; }
 
+    public DateOnly? ResponseSubmittedDate { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; }
 
     public DateTimeOffset? ClosedAtUtc { get; set; }
+
+    public ICollection<NoticeComment> Comments { get; set; } = new List<NoticeComment>();
+
+    public ICollection<NoticeStatusEvent> StatusEvents { get; set; } = new List<NoticeStatusEvent>();
 
     public bool IsOverdue(DateOnly today) =>
         Status != NoticeWorkflowStatus.Closed
