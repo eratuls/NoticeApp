@@ -30,6 +30,36 @@ public class SyncController(ISyncService syncService) : ControllerBase
         return Ok(result.Job);
     }
 
+    public sealed record SubmitOtpBody(string? Otp);
+
+    [HttpPost("{jobId:guid}/otp")]
+    public async Task<IActionResult> SubmitOtp(
+        Guid clientId,
+        Guid jobId,
+        [FromBody] SubmitOtpBody body,
+        CancellationToken cancellationToken = default)
+    {
+        var organizationId = GetOrganizationId();
+        if (organizationId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await syncService.SubmitOtpAsync(
+            organizationId.Value,
+            clientId,
+            jobId,
+            body.Otp ?? string.Empty,
+            cancellationToken);
+
+        if (!result.Succeeded || result.Job is null)
+        {
+            return BadRequest(new { message = result.Error ?? "Unable to submit OTP." });
+        }
+
+        return Ok(result.Job);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Latest(
         Guid clientId,

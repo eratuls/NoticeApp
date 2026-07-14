@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Clients;
+using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Domain.Entities;
 using NoticeSaaS.Domain.Enums;
 using NoticeSaaS.Infrastructure.Persistence;
@@ -11,7 +12,8 @@ namespace NoticeSaaS.Infrastructure.Clients;
 public sealed class ClientService(
     NoticeSaaSDbContext db,
     IDataProtectionProvider dataProtectionProvider,
-    IUsageLimitsService usageLimitsService) : IClientService
+    IUsageLimitsService usageLimitsService,
+    IIncomeTaxPortalClient incomeTaxPortalClient) : IClientService
 {
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("NoticeSaaS.PortalCredentials.v1");
 
@@ -44,6 +46,7 @@ public sealed class ClientService(
                 c.Id,
                 c.Name,
                 c.Pan,
+                c.AadhaarMasked,
                 c.CaPan,
                 c.Module.ToString(),
                 c.SyncFrequency.ToString(),
@@ -76,22 +79,12 @@ public sealed class ClientService(
         CreateClientRequest request,
         CancellationToken cancellationToken = default)
     {
-        var name = request.Name?.Trim() ?? string.Empty;
-        var pan = NormalizePan(request.Pan);
         var username = request.PortalUsername?.Trim() ?? string.Empty;
         var password = request.PortalPassword ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(name)
-            || string.IsNullOrWhiteSpace(pan)
-            || string.IsNullOrWhiteSpace(username)
-            || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            return CreateClientResult.Fail("Name, PAN, portal username, and password are required.");
-        }
-
-        if (pan.Length != 10)
-        {
-            return CreateClientResult.Fail("PAN must be exactly 10 characters.");
+            return CreateClientResult.Fail("Portal username and password are required.");
         }
 
         if (!Enum.TryParse<ComplianceModule>(request.Module, ignoreCase: true, out var module))
@@ -102,6 +95,42 @@ public sealed class ClientService(
         if (!Enum.TryParse<SyncFrequency>(request.SyncFrequency, ignoreCase: true, out var syncFrequency))
         {
             return CreateClientResult.Fail("Invalid sync frequency.");
+        }
+
+        string name;
+        string pan;
+        string? aadhaarMasked = null;
+
+        if (module == ComplianceModule.IncomeTax)
+        {
+            try
+            {
+                var profile = await incomeTaxPortalClient.LoginAndGetProfileAsync(
+                    new PortalCredentialsRequest(username, password),
+                    cancellationToken);
+
+                name = profile.Name;
+                pan = NormalizePan(profile.Pan);
+                aadhaarMasked = profile.AadhaarMasked;
+            }
+            catch (InvalidOperationException ex)
+            {
+                return CreateClientResult.Fail(ex.Message);
+            }
+        }
+        else
+        {
+            name = request.Name?.Trim() ?? string.Empty;
+            pan = NormalizePan(request.Pan);
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(pan))
+            {
+                return CreateClientResult.Fail("Name and PAN are required for this module.");
+            }
+        }
+
+        if (pan.Length != 10)
+        {
+            return CreateClientResult.Fail("PAN must be exactly 10 characters.");
         }
 
         if (await db.Clients.AnyAsync(c => c.OrganizationId == organizationId && c.Pan == pan, cancellationToken))
@@ -122,6 +151,7 @@ public sealed class ClientService(
             OrganizationId = organizationId,
             Name = name,
             Pan = pan,
+            AadhaarMasked = aadhaarMasked,
             CaPan = string.IsNullOrWhiteSpace(request.CaPan) ? null : request.CaPan.Trim().ToUpperInvariant(),
             Module = module,
             SyncFrequency = syncFrequency,
@@ -150,6 +180,7 @@ public sealed class ClientService(
             client.Id,
             client.Name,
             client.Pan,
+            client.AadhaarMasked,
             client.CaPan,
             client.Module.ToString(),
             client.SyncFrequency.ToString(),
@@ -159,6 +190,51 @@ public sealed class ClientService(
             client.LastSyncAtUtc,
             client.NextSyncAtUtc,
             0));
+    }
+
+    public async Task<DeleteClientResult> DeleteAsync(
+        Guid organizationId,
+        Guid clientId,
+        CancellationToken cancellationToken = default)
+    {
+        var client = await db.Clients
+            .FirstOrDefaultAsync(c => c.Id == clientId && c.OrganizationId == organizationId, cancellationToken);
+
+        if (client is null)
+        {
+            return DeleteClientResult.Fail("Client not found.");
+        }
+
+        var noticeIds = await db.Notices
+            .Where(n => n.ClientId == clientId)
+            .Select(n => n.Id)
+            .ToListAsync(cancellationToken);
+
+        // Reminders use NoAction FKs — remove before notices/client cascade.
+        await db.Reminders
+            .Where(r => r.ClientId == clientId || (r.NoticeId != null && noticeIds.Contains(r.NoticeId.Value)))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        // Ledger keeps billing history but must not block SyncJob cascade.
+        var syncJobIds = await db.SyncJobs
+            .Where(j => j.ClientId == clientId)
+            .Select(j => j.Id)
+            .ToListAsync(cancellationToken);
+
+        if (syncJobIds.Count > 0)
+        {
+            await db.SyncCreditLedger
+                .Where(e => e.SyncJobId != null && syncJobIds.Contains(e.SyncJobId.Value))
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(e => e.SyncJobId, (Guid?)null),
+                    cancellationToken);
+        }
+
+        // Cascades: PortalCredential, Notices (+ comments/status events), SyncJobs (+ logs).
+        db.Clients.Remove(client);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return DeleteClientResult.Ok();
     }
 
     public static DateTimeOffset ComputeNextSync(DateTimeOffset from, SyncFrequency frequency) =>

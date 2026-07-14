@@ -12,6 +12,7 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Pan).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.AadhaarMasked).HasMaxLength(20);
         builder.Property(x => x.CaPan).HasMaxLength(10);
         builder.Property(x => x.PortalUsername).HasMaxLength(100);
         builder.Property(x => x.Module).HasConversion<string>().HasMaxLength(32);

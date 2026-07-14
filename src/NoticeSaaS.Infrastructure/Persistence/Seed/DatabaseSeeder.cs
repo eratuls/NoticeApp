@@ -172,6 +172,7 @@ public static class DatabaseSeeder
                 OrganizationId = SeedOrganizationId,
                 Name = "Marshal Quarries And Granites Pvt Ltd",
                 Pan = "AABCM1234F",
+                AadhaarMasked = "XXXX-XXXX-1234",
                 Module = ComplianceModule.IncomeTax,
                 SyncFrequency = syncFrequency,
                 PortalUsername = portalUser,
@@ -187,6 +188,7 @@ public static class DatabaseSeeder
             client.OrganizationId = SeedOrganizationId;
             client.Name = "Marshal Quarries And Granites Pvt Ltd";
             client.Pan = "AABCM1234F";
+            client.AadhaarMasked ??= "XXXX-XXXX-1234";
             client.Module = ComplianceModule.IncomeTax;
             client.SyncFrequency = syncFrequency;
             client.PortalUsername = portalUser;

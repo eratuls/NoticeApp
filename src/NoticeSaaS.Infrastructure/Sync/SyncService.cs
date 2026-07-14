@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Sync;
@@ -10,8 +11,12 @@ namespace NoticeSaaS.Infrastructure.Sync;
 public sealed class SyncService(
     NoticeSaaSDbContext db,
     ISyncJobProcessor processor,
-    IUsageLimitsService usageLimitsService) : ISyncService
+    IUsageLimitsService usageLimitsService,
+    IDataProtectionProvider dataProtectionProvider) : ISyncService
 {
+    private readonly IDataProtector _otpProtector =
+        dataProtectionProvider.CreateProtector("NoticeSaaS.SyncJobOtp.v1");
+
     public async Task<TriggerSyncResult> TriggerManualAsync(
         Guid organizationId,
         Guid clientId,
@@ -47,7 +52,9 @@ public sealed class SyncService(
 
         var activeJobs = await db.SyncJobs
             .Where(j => j.ClientId == clientId
-                        && (j.Status == SyncJobStatus.Pending || j.Status == SyncJobStatus.Running))
+                        && (j.Status == SyncJobStatus.Pending
+                            || j.Status == SyncJobStatus.Running
+                            || j.Status == SyncJobStatus.AwaitingOtp))
             .ToListAsync(cancellationToken);
 
         var now = DateTimeOffset.UtcNow;
@@ -62,6 +69,7 @@ public sealed class SyncService(
             active.Status = SyncJobStatus.Failed;
             active.CompletedAtUtc = now;
             active.ErrorMessage = "Superseded by a newer sync request.";
+            active.SubmittedOtpProtected = null;
         }
 
         var job = new SyncJob
@@ -83,6 +91,64 @@ public sealed class SyncService(
         return dto is null
             ? TriggerSyncResult.Fail("Sync job could not be loaded after processing.")
             : TriggerSyncResult.Ok(dto);
+    }
+
+    public async Task<SubmitOtpResult> SubmitOtpAsync(
+        Guid organizationId,
+        Guid clientId,
+        Guid syncJobId,
+        string otp,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(otp))
+        {
+            return SubmitOtpResult.Fail("OTP is required.");
+        }
+
+        var trimmed = otp.Trim();
+        if (trimmed.Length is < 4 or > 12)
+        {
+            return SubmitOtpResult.Fail("OTP must be between 4 and 12 characters.");
+        }
+
+        var job = await db.SyncJobs
+            .FirstOrDefaultAsync(
+                j => j.Id == syncJobId
+                     && j.ClientId == clientId
+                     && j.OrganizationId == organizationId,
+                cancellationToken);
+
+        if (job is null)
+        {
+            return SubmitOtpResult.Fail("Sync job not found.");
+        }
+
+        if (job.Status != SyncJobStatus.AwaitingOtp)
+        {
+            return SubmitOtpResult.Fail("This sync job is not waiting for OTP.");
+        }
+
+        if (job.OtpRequestedAtUtc is not null
+            && DateTimeOffset.UtcNow - job.OtpRequestedAtUtc > SyncJobProcessor.OtpTimeout)
+        {
+            job.Status = SyncJobStatus.Failed;
+            job.CompletedAtUtc = DateTimeOffset.UtcNow;
+            job.ErrorMessage =
+                $"Vault OTP was not submitted within {SyncJobProcessor.OtpTimeout.TotalMinutes:0} minutes.";
+            job.SubmittedOtpProtected = null;
+            await db.SaveChangesAsync(cancellationToken);
+            return SubmitOtpResult.Fail(job.ErrorMessage);
+        }
+
+        job.SubmittedOtpProtected = _otpProtector.Protect(trimmed);
+        await db.SaveChangesAsync(cancellationToken);
+
+        await processor.ProcessJobAsync(job.Id, cancellationToken);
+
+        var dto = await GetJobDtoAsync(job.Id, cancellationToken);
+        return dto is null
+            ? SubmitOtpResult.Fail("Sync job could not be loaded after OTP resume.")
+            : SubmitOtpResult.Ok(dto);
     }
 
     public async Task<SyncJobDto?> GetLatestForClientAsync(
@@ -109,7 +175,9 @@ public sealed class SyncService(
                         && db.PortalCredentials.Any(p => p.ClientId == c.Id))
             .Where(c => !db.SyncJobs.Any(j =>
                 j.ClientId == c.Id
-                && (j.Status == SyncJobStatus.Pending || j.Status == SyncJobStatus.Running)))
+                && (j.Status == SyncJobStatus.Pending
+                    || j.Status == SyncJobStatus.Running
+                    || j.Status == SyncJobStatus.AwaitingOtp)))
             .Select(c => new { c.Id, c.OrganizationId })
             .Take(20)
             .ToListAsync(cancellationToken);
@@ -166,6 +234,7 @@ public sealed class SyncService(
             job.CompletedAtUtc,
             job.ErrorMessage,
             job.NoticesUpserted,
+            job.OtpRequestedAtUtc,
             job.Logs
                 .OrderBy(l => l.AtUtc)
                 .Select(l => new SyncJobLogDto(l.AtUtc, l.Level, l.Message))

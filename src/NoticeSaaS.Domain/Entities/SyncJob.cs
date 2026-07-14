@@ -28,5 +28,11 @@ public class SyncJob
 
     public int NoticesUpserted { get; set; }
 
+    /// <summary>When the job paused for vault OTP.</summary>
+    public DateTimeOffset? OtpRequestedAtUtc { get; set; }
+
+    /// <summary>Data-Protection protected OTP submitted by the user (cleared after resume).</summary>
+    public string? SubmittedOtpProtected { get; set; }
+
     public ICollection<SyncJobLog> Logs { get; set; } = new List<SyncJobLog>();
 }

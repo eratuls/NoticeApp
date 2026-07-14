@@ -1,19 +1,28 @@
-# NoticeSaaS - Day 9 (Usage & Limits)
+# NoticeSaaS - Day 10 (OTP-assisted portal sync)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 9 done when
+## Day 10 done when
 
-- [x] Usage & Limits API: assessee seats + sync credit quotas for the org
-- [x] Sync credit ledger: decrement on successful sync; block when exhausted
-- [x] Settings > Usage & Limits UI (meters + remaining credits)
-- [x] Seed demo subscription quotas; tests for quota enforcement
+- [x] Detect vault/OTP-required portal accounts during sync login
+- [x] Pause sync job awaiting user OTP; API + UI handoff to submit OTP
+- [x] Resume worker after OTP; complete notice upsert or fail cleanly on timeout
+- [x] Tests for OTP pause / resume path (mock portal)
 
 ### Auth
 
 | Email | Password |
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
+
+### OTP-assisted sync (mock portal)
+
+| Portal password | Behavior |
+|-----------------|----------|
+| Normal password | Unattended sync (Day 8 path) |
+| `vault-otp` | Job pauses as `AwaitingOtp`; submit OTP `123456` in UI to resume |
+
+Timeout: 5 minutes without OTP → job fails.
 
 ### Run
 
@@ -28,8 +37,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Usage (or header Sync credits).
+Open http://localhost:4200 → Clients → add a client with portal password `vault-otp` → Sync now → enter OTP `123456`.
 
-## Next - Day 10
+## Next - Day 11
 
-OTP-assisted portal sync handoff (or polish from Phase 1 acceptance checklist).
+Phase 1 polish from acceptance checklist (dashboard buckets, team, master data gaps).

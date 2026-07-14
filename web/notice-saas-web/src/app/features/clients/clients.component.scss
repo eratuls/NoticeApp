@@ -125,20 +125,22 @@ td {
   font-weight: 700;
 }
 
-.pan {
-  margin: 0.2rem 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
+.client-link,
 .notices-link {
   font-weight: 700;
   color: var(--copper-deep);
   text-decoration: none;
 }
 
+.client-link:hover,
 .notices-link:hover {
   text-decoration: underline;
+}
+
+.pan {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .status {
@@ -179,7 +181,8 @@ td {
 }
 
 .sync-status[data-status='Running'],
-.sync-status[data-status='Pending'] {
+.sync-status[data-status='Pending'],
+.sync-status[data-status='AwaitingOtp'] {
   color: var(--copper-deep);
 }
 
@@ -203,20 +206,47 @@ td {
   padding: 0.45rem 0.7rem;
 }
 
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.danger-btn {
+  white-space: nowrap;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.7rem;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+
+button.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(7, 21, 38, 0.55);
-  z-index: 40;
 }
 
 .modal {
   width: min(28rem, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 0.75rem;
+  margin: 0 auto;
   padding: 1.5rem;
   background: var(--paper);
   border-top: 3px solid var(--copper);

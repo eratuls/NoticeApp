@@ -3,11 +3,16 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using NoticeSaaS.Application.Sync;
+using NoticeSaaS.Infrastructure.Persistence;
+using NoticeSaaS.Infrastructure.Sync;
 
 namespace NoticeSaaS.UnitTests;
 
 public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -16,6 +21,7 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
     public SyncEndpointTests(WebApplicationFactory<Program> factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -98,6 +104,108 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(countAfterFirst, noticesAfterSecond.Notices.Count);
     }
 
+    [Fact]
+    public async Task VaultClient_PausesForOtp_ThenResumesOnValidOtp()
+    {
+        await AuthenticateAsync();
+
+        var pan = $"VAULT{Random.Shared.Next(1000, 9999)}A";
+        var create = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            module = "IncomeTax",
+            syncFrequency = "Weekly",
+            portalUsername = pan,
+            portalPassword = MockIncomeTaxPortalClient.VaultPassword
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<ClientCreatedDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var sync = await _client.PostAsync($"/api/v1/clients/{created.Id}/sync", null);
+        Assert.Equal(HttpStatusCode.OK, sync.StatusCode);
+        var awaiting = await sync.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(awaiting);
+        Assert.Equal("AwaitingOtp", awaiting.Status);
+        Assert.NotNull(awaiting.OtpRequestedAtUtc);
+        Assert.Equal(0, awaiting.NoticesUpserted);
+
+        var badOtp = await _client.PostAsJsonAsync(
+            $"/api/v1/clients/{created.Id}/sync/{awaiting.Id}/otp",
+            new { otp = "000000" });
+        Assert.Equal(HttpStatusCode.OK, badOtp.StatusCode);
+        var failed = await badOtp.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(failed);
+        Assert.Equal("Failed", failed.Status);
+        Assert.Contains("invalid OTP", failed.ErrorMessage ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        var syncAgain = await _client.PostAsync($"/api/v1/clients/{created.Id}/sync", null);
+        Assert.Equal(HttpStatusCode.OK, syncAgain.StatusCode);
+        var awaitingAgain = await syncAgain.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(awaitingAgain);
+        Assert.Equal("AwaitingOtp", awaitingAgain.Status);
+
+        var goodOtp = await _client.PostAsJsonAsync(
+            $"/api/v1/clients/{created.Id}/sync/{awaitingAgain.Id}/otp",
+            new { otp = MockIncomeTaxPortalClient.ValidOtp });
+        Assert.Equal(HttpStatusCode.OK, goodOtp.StatusCode);
+        var succeeded = await goodOtp.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(succeeded);
+        Assert.Equal("Succeeded", succeeded.Status);
+        Assert.Equal(2, succeeded.NoticesUpserted);
+
+        var notices = await _client.GetFromJsonAsync<ClientNoticesDto>(
+            $"/api/v1/clients/{created.Id}/notices",
+            JsonOptions);
+        Assert.NotNull(notices);
+        Assert.Contains(notices.Notices, n => n.DocumentReferenceId == $"DIN-SYNC-{pan}-001");
+    }
+
+    [Fact]
+    public async Task VaultClient_OtpTimeout_FailsCleanly()
+    {
+        await AuthenticateAsync();
+
+        var pan = $"VTOUT{Random.Shared.Next(1000, 9999)}A";
+        var create = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            module = "IncomeTax",
+            syncFrequency = "Weekly",
+            portalUsername = pan,
+            portalPassword = MockIncomeTaxPortalClient.VaultPassword
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<ClientCreatedDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var sync = await _client.PostAsync($"/api/v1/clients/{created.Id}/sync", null);
+        Assert.Equal(HttpStatusCode.OK, sync.StatusCode);
+        var awaiting = await sync.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(awaiting);
+        Assert.Equal("AwaitingOtp", awaiting.Status);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NoticeSaaSDbContext>();
+            var job = db.SyncJobs.Single(j => j.Id == awaiting.Id);
+            job.OtpRequestedAtUtc = DateTimeOffset.UtcNow - SyncJobProcessor.OtpTimeout - TimeSpan.FromMinutes(1);
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var processor = scope.ServiceProvider.GetRequiredService<ISyncJobProcessor>();
+            await processor.ProcessPendingAsync(maxJobs: 10);
+        }
+
+        var latest = await _client.GetFromJsonAsync<SyncJobDto>(
+            $"/api/v1/clients/{created.Id}/sync",
+            JsonOptions);
+        Assert.NotNull(latest);
+        Assert.Equal(awaiting.Id, latest.Id);
+        Assert.Equal("Failed", latest.Status);
+        Assert.Contains("OTP", latest.ErrorMessage ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task AuthenticateAsync()
     {
         var login = await _client.PostAsJsonAsync("/api/auth/login", new
@@ -121,10 +229,14 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         DateTimeOffset? LastSyncAtUtc,
         string? LatestSyncStatus);
 
+    private sealed record ClientCreatedDto(Guid Id, string Pan);
+
     private sealed record SyncJobDto(
         Guid Id,
         string Status,
-        int NoticesUpserted);
+        int NoticesUpserted,
+        string? ErrorMessage,
+        DateTimeOffset? OtpRequestedAtUtc);
 
     private sealed record ClientNoticesDto(List<NoticeRow> Notices);
 

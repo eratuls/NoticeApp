@@ -10,6 +10,7 @@ public sealed record SyncJobDto(
     DateTimeOffset? CompletedAtUtc,
     string? ErrorMessage,
     int NoticesUpserted,
+    DateTimeOffset? OtpRequestedAtUtc,
     IReadOnlyList<SyncJobLogDto> Logs);
 
 public sealed record SyncJobLogDto(
@@ -23,11 +24,24 @@ public sealed record TriggerSyncResult(bool Succeeded, SyncJobDto? Job, string? 
     public static TriggerSyncResult Fail(string error) => new(false, null, error);
 }
 
+public sealed record SubmitOtpResult(bool Succeeded, SyncJobDto? Job, string? Error)
+{
+    public static SubmitOtpResult Ok(SyncJobDto job) => new(true, job, null);
+    public static SubmitOtpResult Fail(string error) => new(false, null, error);
+}
+
 public interface ISyncService
 {
     Task<TriggerSyncResult> TriggerManualAsync(
         Guid organizationId,
         Guid clientId,
+        CancellationToken cancellationToken = default);
+
+    Task<SubmitOtpResult> SubmitOtpAsync(
+        Guid organizationId,
+        Guid clientId,
+        Guid syncJobId,
+        string otp,
         CancellationToken cancellationToken = default);
 
     Task<SyncJobDto?> GetLatestForClientAsync(
@@ -45,13 +59,30 @@ public interface ISyncJobProcessor
     Task ProcessPendingAsync(int maxJobs, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Fetches notices from the Income Tax portal for password-only accounts.</summary>
+/// <summary>Income Tax e-Filing portal adapter (login/profile + notice fetch).</summary>
 public interface IIncomeTaxPortalClient
 {
+    /// <summary>
+    /// Validates portal credentials and returns assessee profile (name, PAN, masked Aadhaar).
+    /// Does not require vault OTP — used when adding a client.
+    /// </summary>
+    Task<PortalProfileDto> LoginAndGetProfileAsync(
+        PortalCredentialsRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Fetches notices (password-only or OTP-assisted after vault challenge).</summary>
     Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesAsync(
         PortalLoginRequest request,
+        string? otp = null,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record PortalCredentialsRequest(string Username, string Password);
+
+public sealed record PortalProfileDto(
+    string Name,
+    string Pan,
+    string AadhaarMasked);
 
 public sealed record PortalLoginRequest(
     string Username,
@@ -69,3 +100,12 @@ public sealed record PortalNoticeDto(
     DateOnly? ServedDate,
     DateOnly? ResponseDueDate,
     string? PdfUrl);
+
+/// <summary>Thrown when the portal account has e-Filing Vault enabled and OTP is required.</summary>
+public sealed class PortalOtpRequiredException : Exception
+{
+    public PortalOtpRequiredException()
+        : base("Income Tax portal requires vault OTP to continue login.")
+    {
+    }
+}

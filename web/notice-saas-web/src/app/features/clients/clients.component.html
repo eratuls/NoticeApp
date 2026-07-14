@@ -2,7 +2,9 @@
   <header class="intro">
     <p class="brand-line">NoticeSaaS</p>
     <h1>Income Tax clients</h1>
-    <p class="lede">Assessees linked to portal credentials and sync schedules for this workspace.</p>
+    <p class="lede">
+      Link assessee portal credentials so NoticeSaaS can fetch Income Tax notices on a schedule.
+    </p>
   </header>
 
   <div class="toolbar">
@@ -29,7 +31,7 @@
   } @else if (error()) {
     <p class="state error">{{ error() }}</p>
   } @else if (clients().length === 0) {
-    <p class="state">No clients yet. Add an Income Tax assessee to begin sync scheduling.</p>
+    <p class="state">No clients yet. Add an Income Tax assessee to start fetching notices.</p>
   } @else {
     <div class="table-wrap">
       <table>
@@ -49,8 +51,10 @@
           @for (c of clients(); track c.id) {
             <tr>
               <td>
-                <p class="name">{{ c.name }}</p>
-                <p class="pan">{{ c.pan }}</p>
+                <p class="name">
+                  <a class="client-link" [routerLink]="['/clients', c.id, 'notices']">{{ c.name }}</a>
+                </p>
+                <p class="pan">{{ c.pan }}@if (c.aadhaarMasked) { · {{ c.aadhaarMasked }}}</p>
               </td>
               <td>{{ c.portalUsername || '—' }}</td>
               <td>{{ c.lastSyncAtUtc ? (c.lastSyncAtUtc | date: 'medium') : 'Never' }}</td>
@@ -69,14 +73,22 @@
               </td>
               <td>{{ c.syncFrequency }}</td>
               <td>{{ c.nextSyncAtUtc ? (c.nextSyncAtUtc | date: 'medium') : '—' }}</td>
-              <td>
+              <td class="row-actions">
                 <button
                   type="button"
                   class="ghost sync-btn"
                   (click)="triggerSync(c)"
-                  [disabled]="syncingId() === c.id || !c.isActive"
+                  [disabled]="syncingId() === c.id || deletingId() === c.id || !c.isActive"
                 >
                   {{ syncingId() === c.id ? 'Syncing…' : 'Sync now' }}
+                </button>
+                <button
+                  type="button"
+                  class="ghost danger-btn"
+                  (click)="openDelete(c)"
+                  [disabled]="syncingId() === c.id || deletingId() === c.id"
+                >
+                  Delete
                 </button>
               </td>
             </tr>
@@ -87,20 +99,83 @@
   }
 </section>
 
+@if (deleteTarget(); as target) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-client-title">
+    <div class="modal">
+      <h2 id="delete-client-title">Delete client?</h2>
+      <p class="modal-lede">
+        Are you sure you want to delete <strong>{{ target.name }}</strong> ({{ target.pan }})?
+        This permanently removes portal credentials, all Income Tax notices, sync history, and related
+        reminders for this client. This cannot be undone.
+      </p>
+
+      @if (deleteError()) {
+        <p class="state error">{{ deleteError() }}</p>
+      }
+
+      <div class="actions">
+        <button type="button" class="ghost" (click)="closeDelete()" [disabled]="deletingId() === target.id">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="danger"
+          (click)="confirmDelete()"
+          [disabled]="deletingId() === target.id"
+        >
+          {{ deletingId() === target.id ? 'Deleting…' : 'Delete client' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (otpJob(); as otp) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="otp-title">
+    <form class="modal" (ngSubmit)="submitOtp()">
+      <h2 id="otp-title">Vault OTP required</h2>
+      <p class="modal-lede">
+        Sync for <strong>{{ otp.clientName }}</strong> paused at Income Tax vault login. Enter the OTP
+        sent to the registered mobile/email, then continue.
+      </p>
+
+      <label>
+        <span>One-time password</span>
+        <input
+          name="otpCode"
+          [(ngModel)]="otpCode"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="12"
+          required
+          autofocus
+        />
+      </label>
+
+      @if (otpError()) {
+        <p class="state error">{{ otpError() }}</p>
+      }
+
+      <div class="actions">
+        <button type="button" class="ghost" (click)="closeOtpModal()" [disabled]="otpSubmitting()">
+          Cancel
+        </button>
+        <button type="submit" class="primary" [disabled]="otpSubmitting() || !otpCode.trim()">
+          {{ otpSubmitting() ? 'Submitting…' : 'Submit OTP' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
 @if (showForm()) {
   <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="add-client-title">
     <form class="modal" (ngSubmit)="submit()">
       <h2 id="add-client-title">Add client</h2>
-      <p class="modal-lede">Store portal credentials and choose how often NoticeSaaS should sync.</p>
+      <p class="modal-lede">
+        Enter Income Tax portal credentials. We validate login and pull PAN / Aadhaar before saving.
+      </p>
 
-      <label>
-        <span>Client name</span>
-        <input name="name" [(ngModel)]="name" required />
-      </label>
-      <label>
-        <span>PAN</span>
-        <input name="pan" [(ngModel)]="pan" maxlength="10" required />
-      </label>
       <label>
         <span>Category</span>
         <select name="module" [(ngModel)]="module">
@@ -118,16 +193,17 @@
         </select>
       </label>
       <label>
-        <span>Portal username</span>
-        <input name="portalUsername" [(ngModel)]="portalUsername" required />
+        <span>Username</span>
+        <input name="portalUsername" [(ngModel)]="portalUsername" autocomplete="username" required />
       </label>
       <label>
-        <span>Portal password</span>
+        <span>Password</span>
         <div class="password-row">
           <input
             name="portalPassword"
             [type]="showPassword() ? 'text' : 'password'"
             [(ngModel)]="portalPassword"
+            autocomplete="current-password"
             required
           />
           <button type="button" class="ghost" (click)="showPassword.set(!showPassword())">
@@ -145,7 +221,7 @@
       <div class="actions">
         <button type="button" class="ghost" (click)="closeForm()" [disabled]="saving()">Cancel</button>
         <button type="submit" class="primary" [disabled]="saving()">
-          {{ saving() ? 'Saving…' : 'Proceed' }}
+          {{ saving() ? 'Validating…' : 'Proceed' }}
         </button>
       </div>
     </form>
