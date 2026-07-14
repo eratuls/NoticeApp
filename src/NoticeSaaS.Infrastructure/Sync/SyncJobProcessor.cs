@@ -123,14 +123,15 @@ public sealed class SyncJobProcessor(
 
             await AddLogAsync(syncJobId, "Info",
                 otp is null
-                    ? $"Logging in as {client.Credential.Username} (credentials decrypted in worker)."
-                    : $"Resuming login as {client.Credential.Username} with user-submitted OTP.",
+                    ? "Logging in to Income Tax portal (credentials decrypted in worker)."
+                    : "Resuming Income Tax portal login with user-submitted OTP.",
                 cancellationToken);
 
             IReadOnlyList<PortalNoticeDto> portalNotices;
             try
             {
-                portalNotices = await portalClient.FetchNoticesAsync(
+                portalNotices = await FetchNoticesWithRetryAsync(
+                    syncJobId,
                     new PortalLoginRequest(
                         client.Credential.Username,
                         password,
@@ -179,10 +180,79 @@ public sealed class SyncJobProcessor(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Sync job {JobId} failed", syncJobId);
-            await MarkFailedAsync(syncJobId, ex.Message, cancellationToken);
+            logger.LogWarning(ex, "Sync job {JobId} failed ({ExceptionType})", syncJobId, ex.GetType().Name);
+            await MarkFailedAsync(syncJobId, MapPortalFailureMessage(ex), cancellationToken);
         }
     }
+
+    private async Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesWithRetryAsync(
+        Guid syncJobId,
+        PortalLoginRequest request,
+        string? otp,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastTransient = null;
+
+        for (var attempt = 1; attempt <= PortalCallDefaults.MaxAttempts; attempt++)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(PortalCallDefaults.CallTimeout);
+
+            try
+            {
+                return await portalClient.FetchNoticesAsync(request, otp, timeoutCts.Token);
+            }
+            catch (PortalOtpRequiredException)
+            {
+                throw;
+            }
+            catch (PortalAuthException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (IsTransientPortalFailure(ex) && attempt < PortalCallDefaults.MaxAttempts)
+            {
+                lastTransient = ex;
+                logger.LogWarning(
+                    "Portal call attempt {Attempt}/{MaxAttempts} failed transiently for sync job {JobId}",
+                    attempt,
+                    PortalCallDefaults.MaxAttempts,
+                    syncJobId);
+                await AddLogAsync(
+                    syncJobId,
+                    "Warn",
+                    $"Portal temporarily unavailable (attempt {attempt}/{PortalCallDefaults.MaxAttempts}). Retrying…",
+                    cancellationToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(150 * attempt), cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientPortalFailure(ex))
+            {
+                throw new PortalTransientException(
+                    "Income Tax portal timed out or is temporarily unavailable. Try sync again.",
+                    ex);
+            }
+        }
+
+        throw lastTransient
+            ?? new PortalTransientException("Income Tax portal timed out or is temporarily unavailable. Try sync again.");
+    }
+
+    private static bool IsTransientPortalFailure(Exception ex) =>
+        ex is PortalTransientException
+            or OperationCanceledException
+            or TimeoutException
+            or TaskCanceledException;
+
+    /// <summary>Maps exceptions to user-facing text that never includes secrets.</summary>
+    internal static string MapPortalFailureMessage(Exception ex) =>
+        ex switch
+        {
+            PortalAuthException auth => auth.Message,
+            PortalTransientException transient => transient.Message,
+            OperationCanceledException or TimeoutException or TaskCanceledException =>
+                "Income Tax portal timed out or is temporarily unavailable. Try sync again.",
+            _ => "Income Tax portal sync failed. Try again or check portal credentials."
+        };
 
     private async Task FailTimedOutOtpJobsAsync(CancellationToken cancellationToken)
     {

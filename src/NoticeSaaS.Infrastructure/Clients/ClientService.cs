@@ -113,7 +113,7 @@ public sealed class ClientService(
                 pan = NormalizePan(profile.Pan);
                 aadhaarMasked = profile.AadhaarMasked;
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex) when (ex is InvalidOperationException or PortalAuthException)
             {
                 return CreateClientResult.Fail(ex.Message);
             }

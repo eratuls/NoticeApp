@@ -120,7 +120,17 @@ export class ClientNoticesComponent implements OnInit {
 
   private loadLatestSync(clientId: string): void {
     this.http.get<SyncJobResult>(`${environment.apiBaseUrl}/api/v1/clients/${clientId}/sync`).subscribe({
-      next: (job) => this.latestSync.set(job),
+      next: (job) => {
+        this.latestSync.set(job);
+        if (job.status === 'AwaitingOtp') {
+          this.otpCode = '';
+          this.otpError.set('');
+          this.otpJobId.set(job.id);
+        }
+        if (job.status === 'Failed' && job.errorMessage) {
+          this.syncMessage.set(job.errorMessage);
+        }
+      },
       error: () => this.latestSync.set(null)
     });
   }

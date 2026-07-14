@@ -23,7 +23,13 @@
   </div>
 
   @if (syncMessage()) {
-    <p class="sync-banner" role="status">{{ syncMessage() }}</p>
+    <p
+      class="sync-banner"
+      role="status"
+      [class.sync-banner-error]="syncMessage().toLowerCase().includes('fail') || syncMessage().toLowerCase().includes('portal') || syncMessage().toLowerCase().includes('otp') || syncMessage().toLowerCase().includes('unable')"
+    >
+      {{ syncMessage() }}
+    </p>
   }
 
   @if (loading()) {
@@ -61,7 +67,7 @@
               <td>
                 @if (c.latestSyncStatus) {
                   <span class="sync-status" [attr.data-status]="c.latestSyncStatus">{{ c.latestSyncStatus }}</span>
-                  @if (c.latestSyncError) {
+                  @if (c.latestSyncStatus === 'Failed' && c.latestSyncError) {
                     <p class="sync-error" [title]="c.latestSyncError">{{ c.latestSyncError }}</p>
                   }
                 } @else {

@@ -46,7 +46,13 @@
       </div>
 
       @if (syncMessage()) {
-        <p class="sync-banner" role="status">{{ syncMessage() }}</p>
+        <p
+          class="sync-banner"
+          role="status"
+          [class.sync-banner-error]="latestSync()?.status === 'Failed'"
+        >
+          {{ syncMessage() }}
+        </p>
       }
 
       <div class="tabs" role="tablist">

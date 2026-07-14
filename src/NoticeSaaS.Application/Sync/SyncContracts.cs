@@ -109,3 +109,33 @@ public sealed class PortalOtpRequiredException : Exception
     {
     }
 }
+
+/// <summary>Invalid portal credentials or OTP — do not retry.</summary>
+public sealed class PortalAuthException : Exception
+{
+    public PortalAuthException(string message)
+        : base(message)
+    {
+    }
+}
+
+/// <summary>Transient portal failure (timeout / unavailable) — safe to retry.</summary>
+public sealed class PortalTransientException : Exception
+{
+    public PortalTransientException(string message)
+        : base(message)
+    {
+    }
+
+    public PortalTransientException(string message, Exception inner)
+        : base(message, inner)
+    {
+    }
+}
+
+/// <summary>Defaults for portal call boundaries in the sync worker.</summary>
+public static class PortalCallDefaults
+{
+    public static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(30);
+    public const int MaxAttempts = 3;
+}

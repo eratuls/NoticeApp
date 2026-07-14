@@ -1,12 +1,12 @@
-﻿# NoticeSaaS - Day 14 (Azure deploy skeleton)
+﻿# NoticeSaaS - Day 15 (Portal hardening)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 14 done when
+## Day 15 done when
 
-- [x] Bicep skeleton for Container Apps + Azure SQL + Blob Storage (`infra/`)
-- [x] Attachments: Local (dev) vs Azure Blob (prod) via `Storage:Provider`
-- [x] Deploy docs for secrets (JWT, SQL, DataProtection, Blob)
+- [x] Harden mock/live portal client boundaries (timeouts, retry, clearer errors)
+- [x] Audit: no plaintext portal passwords in logs or sync job payloads
+- [x] Sync job UX: surface portal errors cleanly in Clients / Notices
 
 ### Auth
 
@@ -14,51 +14,29 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
 
+### Mock portal hardening passwords
+
+| Portal password | Behavior |
+|-----------------|----------|
+| Normal | Unattended sync |
+| `vault-otp` | AwaitingOtp → OTP `123456` |
+| `transient-once` | First fetch fails transiently, retry succeeds |
+| `portal-timeout` | Sync fails with safe timeout/unavailable message |
+| `wrong-password` | Rejected at add-client / login |
+
+Worker uses a 30s portal call timeout and up to 3 attempts on transient failures. Sync job errors never echo passwords or OTPs.
+
 ### Attachment storage
 
-| Environment | `Storage:Provider` | Notes |
-|-------------|--------------------|--------|
-| Development | `Local` | Files under `Storage:NoticeAttachmentsPath` (or temp dir) |
-| Production | `AzureBlob` | Uses `Storage:AzureBlob:ConnectionString` + `ContainerName` |
+- Dev: `Storage:Provider=Local`
+- Prod: `Storage:Provider=AzureBlob` (+ connection string / container)
 
-```text
-Storage__Provider=AzureBlob
-Storage__AzureBlob__ConnectionString=...
-Storage__AzureBlob__ContainerName=notice-attachments
-```
-
-### Azure deploy (skeleton)
-
-```powershell
-az group create -n rg-noticesaas -l eastus
-
-az deployment group create `
-  -g rg-noticesaas `
-  -f infra/main.bicep `
-  -p infra/main.bicepparam `
-  -p sqlAdminPassword='<strong-password>' `
-     jwtSigningKey='<32+-char-secret>' `
-     apiImage='<acr>/noticesaas-api:tag' `
-     webImage='<acr>/noticesaas-web:tag'
-```
-
-**Secrets to inject (never commit):**
-
-| Setting | Purpose |
-|---------|---------|
-| `ConnectionStrings__Default` | Azure SQL |
-| `Auth__Jwt__SigningKey` | JWT (≥32 chars) |
-| `Storage__AzureBlob__ConnectionString` | Blob attachments |
-| `DataProtection__KeysPath` / shared volume / blob | ASP.NET DataProtection key ring |
-
-Wire CORS `Cors__AngularOrigins__0` to the web Container App HTTPS URL after first deploy.
-
-### Local packaging
+### Packaging
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 ```
 
-## Next - Day 15
+## Next - Day 16
 
-Live portal hardening or optional AI notice analyzer (Phase 1.5).
+Optional AI notice analyzer (Phase 1.5) or Azure Key Vault for secrets.
