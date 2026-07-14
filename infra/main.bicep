@@ -32,6 +32,7 @@ var envName = '${namePrefix}-cae'
 var apiAppName = '${namePrefix}-api'
 var webAppName = '${namePrefix}-web'
 var blobContainerName = 'notice-attachments'
+var keyVaultName = take('${take(namePrefix, 8)}kv${uniqueString(resourceGroup().id)}', 24)
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
@@ -106,6 +107,23 @@ resource attachmentsContainer 'Microsoft.Storage/storageAccounts/blobServices/co
   }
 }
 
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    tenantId: tenant().tenantId
+    enableRbacAuthorization: true
+    enabledForDeployment: false
+    enabledForTemplateDeployment: true
+    enableSoftDelete: true
+    softDeleteRetentionInDays: 7
+  }
+}
+
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
   location: location
@@ -122,6 +140,31 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 
 var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDbName};Persist Security Info=False;User ID=${sqlAdminLogin};Password=${sqlAdminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+
+// Secrets use -- nesting so ASP.NET Core maps them to configuration keys.
+resource secretSql 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'ConnectionStrings--Default'
+  properties: {
+    value: sqlConnectionString
+  }
+}
+
+resource secretJwt 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'Auth--Jwt--SigningKey'
+  properties: {
+    value: jwtSigningKey
+  }
+}
+
+resource secretBlob 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'Storage--AzureBlob--ConnectionString'
+  properties: {
+    value: storageConnectionString
+  }
+}
 
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: apiAppName
@@ -196,6 +239,14 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'Storage__AzureBlob__ContainerName'
               value: blobContainerName
             }
+            {
+              name: 'KeyVault__Enabled'
+              value: 'false'
+            }
+            {
+              name: 'KeyVault__VaultUri'
+              value: keyVault.properties.vaultUri
+            }
           ]
         }
       ]
@@ -246,5 +297,7 @@ output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDbName
 output storageAccountName string = storage.name
 output blobContainerNameOut string = blobContainerName
+output keyVaultNameOut string = keyVault.name
+output keyVaultUri string = keyVault.properties.vaultUri
 output apiFqdn string = apiApp.properties.configuration.ingress.fqdn
 output webFqdn string = webApp.properties.configuration.ingress.fqdn

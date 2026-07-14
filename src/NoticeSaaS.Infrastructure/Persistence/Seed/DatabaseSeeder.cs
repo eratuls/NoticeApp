@@ -587,7 +587,7 @@ public static class DatabaseSeeder
                 OrganizationId = SeedOrganizationId,
                 PlanName = "Demo Plan",
                 IsActive = true,
-                AssesseeLimit = 50,
+                AssesseeLimit = 500,
                 SyncCreditLimit = 150,
                 SyncCreditsUsed = 15,
                 StartsAtUtc = starts,
@@ -601,7 +601,7 @@ public static class DatabaseSeeder
         {
             existing.PlanName = "Demo Plan";
             existing.IsActive = true;
-            existing.AssesseeLimit = 50;
+            existing.AssesseeLimit = 500;
             existing.SyncCreditLimit = 150;
             if (existing.SyncCreditsUsed < 15)
             {

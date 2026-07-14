@@ -32,7 +32,7 @@ public class UsageEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.NotNull(usage);
         Assert.Equal("Demo Plan", usage.PlanName);
         Assert.True(usage.IsActive);
-        Assert.Equal(50, usage.AssesseeLimit);
+        Assert.Equal(500, usage.AssesseeLimit);
         Assert.Equal(150, usage.SyncCreditLimit);
         Assert.True(usage.AssesseeUsed >= 1);
         Assert.True(usage.SyncCreditsRemaining >= 0);

@@ -1,7 +1,9 @@
 using NoticeSaaS.Infrastructure;
 using NoticeSaaS.Infrastructure.Auth;
+using NoticeSaaS.Infrastructure.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddOptionalAzureKeyVault();
 
 var appInsightsConnection = builder.Configuration["ApplicationInsights:ConnectionString"];
 if (!string.IsNullOrWhiteSpace(appInsightsConnection))
