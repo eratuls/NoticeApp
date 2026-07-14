@@ -206,6 +206,62 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("OTP", latest.ErrorMessage ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task TransientPortalFailure_RetriesThenSucceeds()
+    {
+        await AuthenticateAsync();
+
+        var pan = $"TRETY{Random.Shared.Next(1000, 9999)}A";
+        var create = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            module = "IncomeTax",
+            syncFrequency = "Weekly",
+            portalUsername = pan,
+            portalPassword = MockIncomeTaxPortalClient.TransientOncePassword
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<ClientCreatedDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var sync = await _client.PostAsync($"/api/v1/clients/{created.Id}/sync", null);
+        Assert.Equal(HttpStatusCode.OK, sync.StatusCode);
+        var job = await sync.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(job);
+        Assert.Equal("Succeeded", job.Status);
+        Assert.Equal(2, job.NoticesUpserted);
+        Assert.Null(job.ErrorMessage);
+        Assert.DoesNotContain(MockIncomeTaxPortalClient.TransientOncePassword, job.ErrorMessage ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task PortalTimeout_FailsWithSafeMessage_WithoutSecrets()
+    {
+        await AuthenticateAsync();
+
+        var pan = $"PTOUT{Random.Shared.Next(1000, 9999)}A";
+        var create = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            module = "IncomeTax",
+            syncFrequency = "Weekly",
+            portalUsername = pan,
+            portalPassword = MockIncomeTaxPortalClient.PortalTimeoutPassword
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<ClientCreatedDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var sync = await _client.PostAsync($"/api/v1/clients/{created.Id}/sync", null);
+        Assert.Equal(HttpStatusCode.OK, sync.StatusCode);
+        var job = await sync.Content.ReadFromJsonAsync<SyncJobDto>(JsonOptions);
+        Assert.NotNull(job);
+        Assert.Equal("Failed", job.Status);
+        Assert.False(string.IsNullOrWhiteSpace(job.ErrorMessage));
+        Assert.Contains("portal", job.ErrorMessage!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(MockIncomeTaxPortalClient.PortalTimeoutPassword, job.ErrorMessage!);
+        Assert.DoesNotContain("DemoPortal", job.ErrorMessage!);
+        Assert.DoesNotContain(MockIncomeTaxPortalClient.ValidOtp, job.ErrorMessage!);
+    }
+
     private async Task AuthenticateAsync()
     {
         var login = await _client.PostAsJsonAsync("/api/auth/login", new

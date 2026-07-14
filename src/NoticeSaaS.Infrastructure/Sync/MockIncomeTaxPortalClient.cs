@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,6 +12,8 @@ namespace NoticeSaaS.Infrastructure.Sync;
 /// <list type="bullet">
 /// <item>Any non-empty password except <c>wrong-password</c> is treated as valid login.</item>
 /// <item>Password <c>vault-otp</c> requires OTP <c>123456</c> only when fetching notices.</item>
+/// <item>Password <c>transient-once</c> fails once with a transient error, then succeeds (retry tests).</item>
+/// <item>Password <c>portal-timeout</c> always fails with a transient portal timeout.</item>
 /// <item>Profile (name, PAN, Aadhaar) is derived from the portal username (usually PAN).</item>
 /// </list>
 /// Swap for a Playwright / real e-Filing implementation when vault/login go/no-go passes.
@@ -20,11 +23,16 @@ public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
     public const string VaultPassword = "vault-otp";
     public const string ValidOtp = "123456";
     public const string InvalidPassword = "wrong-password";
+    public const string TransientOncePassword = "transient-once";
+    public const string PortalTimeoutPassword = "portal-timeout";
+
+    private static readonly ConcurrentDictionary<string, int> TransientFailCounts = new(StringComparer.Ordinal);
 
     public Task<PortalProfileDto> LoginAndGetProfileAsync(
         PortalCredentialsRequest request,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateCredentials(request.Username, request.Password);
 
         var pan = ResolvePan(request.Username);
@@ -34,12 +42,31 @@ public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
         return Task.FromResult(new PortalProfileDto(name, pan, aadhaarMasked));
     }
 
-    public Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesAsync(
+    public async Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesAsync(
         PortalLoginRequest request,
         string? otp = null,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateCredentials(request.Username, request.Password);
+
+        // Simulate a slow portal call boundary without blocking tests for 30s.
+        await Task.Delay(1, cancellationToken);
+
+        if (string.Equals(request.Password, PortalTimeoutPassword, StringComparison.Ordinal))
+        {
+            throw new PortalTransientException("Income Tax portal timed out. Try sync again.");
+        }
+
+        if (string.Equals(request.Password, TransientOncePassword, StringComparison.Ordinal))
+        {
+            var key = $"{request.Username}|{TransientOncePassword}";
+            var fails = TransientFailCounts.AddOrUpdate(key, 1, (_, n) => n + 1);
+            if (fails == 1)
+            {
+                throw new PortalTransientException("Income Tax portal is temporarily unavailable.");
+            }
+        }
 
         var requiresVault = string.Equals(request.Password, VaultPassword, StringComparison.Ordinal);
         if (requiresVault)
@@ -51,7 +78,7 @@ public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
 
             if (!string.Equals(otp.Trim(), ValidOtp, StringComparison.Ordinal))
             {
-                throw new InvalidOperationException("Income Tax portal login failed: invalid OTP.");
+                throw new PortalAuthException("Income Tax portal login failed: invalid OTP.");
             }
         }
 
@@ -83,19 +110,19 @@ public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
                 PdfUrl: null)
         ];
 
-        return Task.FromResult(notices);
+        return notices;
     }
 
     private static void ValidateCredentials(string? username, string? password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            throw new InvalidOperationException("Portal username and password are required.");
+            throw new PortalAuthException("Portal username and password are required.");
         }
 
         if (string.Equals(password, InvalidPassword, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Income Tax portal login failed: invalid username or password.");
+            throw new PortalAuthException("Income Tax portal login failed: invalid username or password.");
         }
     }
 

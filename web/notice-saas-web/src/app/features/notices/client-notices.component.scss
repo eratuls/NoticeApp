@@ -180,6 +180,12 @@ button.ghost:disabled {
   font-size: 0.9rem;
 }
 
+.sync-banner-error {
+  border-left-color: #c45c5c;
+  background: color-mix(in srgb, #c45c5c 12%, transparent);
+  color: #9b2c2c;
+}
+
 .muted {
   color: var(--muted);
 }

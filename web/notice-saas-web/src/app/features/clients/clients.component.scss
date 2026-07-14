@@ -164,6 +164,12 @@ td {
   font-size: 0.9rem;
 }
 
+.sync-banner-error {
+  border-left-color: #c45c5c;
+  background: color-mix(in srgb, #c45c5c 12%, transparent);
+  color: #9b2c2c;
+}
+
 .sync-status {
   font-weight: 700;
   font-size: 0.78rem;

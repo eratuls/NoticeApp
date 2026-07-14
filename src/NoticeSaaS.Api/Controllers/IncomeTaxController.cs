@@ -34,7 +34,7 @@ public class IncomeTaxController(IIncomeTaxPortalClient portalClient) : Controll
                 profile.Pan,
                 profile.AadhaarMasked));
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or PortalAuthException)
         {
             return BadRequest(new { message = ex.Message });
         }
