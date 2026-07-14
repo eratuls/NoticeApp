@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/NoticeSaaS.Api/Dockerfile
+    container_name: notice-saas-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=NoticeSaaS;User Id=sa;Password=Your_strong_Password123;TrustServerCertificate=True;Encrypt=False"
+      Auth__Jwt__SigningKey: "DevOnly_ChangeMe_NoticeSaaS_Jwt_Signing_Key_32+"
+      Auth__Jwt__Issuer: "NoticeSaaS"
+      Auth__Jwt__Audience: "NoticeSaaS.Web"
+      Auth__SessionIdleMinutes: "10"
+      Auth__Jwt__AccessTokenMinutes: "60"
+      Storage__NoticeAttachmentsPath: "/data/notice-attachments"
+      DataProtection__KeysPath: "/data/dp-keys"
+    ports:
+      - "8080:8080"
+    volumes:
+      - notice_saas_app_data:/data
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  web:
+    build:
+      context: web/notice-saas-web
+      dockerfile: Dockerfile
+    container_name: notice-saas-web
+    ports:
+      - "8088:80"
+    depends_on:
+      - api
+
+volumes:
+  notice_saas_app_data:

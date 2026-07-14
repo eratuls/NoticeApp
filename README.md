@@ -1,13 +1,13 @@
-# NoticeSaaS - Day 12 (Phase 1 wrap-up)
+# NoticeSaaS - Day 13 (Azure packaging + CI)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 12 done when
+## Day 13 done when
 
-- [x] Notice PDF + reply uploads on notice detail (downloadable attachments)
-- [x] Assign notice to a team member
-- [x] Calendar shell stub; Manual / Case Status seed + Add manual notice
-- [x] Tests for assign + attachment upload/download
+- [x] Multi-stage Dockerfiles for API and Angular web
+- [x] Compose overlay to run API + web against local SQL
+- [x] GitHub Actions CI (restore, build, test)
+- [x] API applies migrations on startup (not only Development)
 
 ### Auth
 
@@ -15,7 +15,20 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
 
-### Run
+### Packaging
+
+```powershell
+# SQL only (dev)
+docker compose up -d
+
+# Full stack locally
+docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+```
+
+- API: http://localhost:8080/health
+- Web: http://localhost:8088 (proxies `/api` to the API container)
+
+### Run (host / without containers)
 
 ```powershell
 docker compose up -d
@@ -28,8 +41,6 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open a notice → upload PDF/reply, assign a team member. Calendar is a Phase 1 stub in the shell.
+## Next - Day 14
 
-## Next - Day 13
-
-Phase 1.5 / rollout prep: live portal hardening, Azure packaging, or optional AI analyzer.
+Optional: Azure Container Apps / App Service ARM-Bicep skeleton, blob storage for attachments, or live portal hardening.
