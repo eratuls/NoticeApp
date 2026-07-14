@@ -14,6 +14,7 @@ services:
       Auth__Jwt__AccessTokenMinutes: "60"
       Storage__Provider: "Local"
       Storage__NoticeAttachmentsPath: "/data/notice-attachments"
+      KeyVault__Enabled: "false"
       DataProtection__KeysPath: "/data/dp-keys"
     ports:
       - "8080:8080"

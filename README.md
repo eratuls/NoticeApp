@@ -1,12 +1,12 @@
-﻿# NoticeSaaS - Day 15 (Portal hardening)
+﻿# NoticeSaaS - Day 16 (Azure Key Vault secrets)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 15 done when
+## Day 16 done when
 
-- [x] Harden mock/live portal client boundaries (timeouts, retry, clearer errors)
-- [x] Audit: no plaintext portal passwords in logs or sync job payloads
-- [x] Sync job UX: surface portal errors cleanly in Clients / Notices
+- [x] Key Vault config placeholders for JWT, SQL, Blob (`KeyVault:Enabled` / `VaultUri`)
+- [x] Document local vs Azure secret loading
+- [x] Local storage + emulators work without Key Vault (`Enabled: false`)
 
 ### Auth
 
@@ -14,22 +14,22 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
 
-### Mock portal hardening passwords
+### Secrets: local vs Azure
 
-| Portal password | Behavior |
-|-----------------|----------|
-| Normal | Unattended sync |
-| `vault-otp` | AwaitingOtp → OTP `123456` |
-| `transient-once` | First fetch fails transiently, retry succeeds |
-| `portal-timeout` | Sync fails with safe timeout/unavailable message |
-| `wrong-password` | Rejected at add-client / login |
+| Mode | How |
+|------|-----|
+| **Local / Docker** | `KeyVault:Enabled=false` (default). Use `appsettings.Development.json`, env vars, or user-secrets. |
+| **Azure** | Set `KeyVault__Enabled=true` and `KeyVault__VaultUri=https://{vault}.vault.azure.net/`. App uses `DefaultAzureCredential` (managed identity / Azure CLI). |
 
-Worker uses a 30s portal call timeout and up to 3 attempts on transient failures. Sync job errors never echo passwords or OTPs.
+Store nested config as Key Vault secret names with `--`:
 
-### Attachment storage
+| Secret name | Config key |
+|-------------|------------|
+| `ConnectionStrings--Default` | SQL |
+| `Auth--Jwt--SigningKey` | JWT (≥32 chars) |
+| `Storage--AzureBlob--ConnectionString` | Blob attachments |
 
-- Dev: `Storage:Provider=Local`
-- Prod: `Storage:Provider=AzureBlob` (+ connection string / container)
+`infra/main.bicep` provisions the vault and those secrets. Container Apps still receive env `secretRef` values so deploy works before managed identity RBAC is wired; flip `KeyVault__Enabled=true` after granting the app **Key Vault Secrets User**.
 
 ### Packaging
 
@@ -37,6 +37,6 @@ Worker uses a 30s portal call timeout and up to 3 attempts on transient failures
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 ```
 
-## Next - Day 16
+## Next - Day 17
 
-Optional AI notice analyzer (Phase 1.5) or Azure Key Vault for secrets.
+Optional AI notice analyzer (Phase 1.5) or production smoke checklist.
