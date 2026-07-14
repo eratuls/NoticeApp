@@ -17,6 +17,7 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<PortalCredential> PortalCredentials => Set<PortalCredential>();
     public DbSet<NoticeComment> NoticeComments => Set<NoticeComment>();
     public DbSet<NoticeStatusEvent> NoticeStatusEvents => Set<NoticeStatusEvent>();
+    public DbSet<NoticeAttachment> NoticeAttachments => Set<NoticeAttachment>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();

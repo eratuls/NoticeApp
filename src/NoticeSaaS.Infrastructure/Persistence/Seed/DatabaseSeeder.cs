@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NoticeSaaS.Domain.Entities;
 using NoticeSaaS.Domain.Enums;
+using NoticeSaaS.Infrastructure.Notices;
 
 namespace NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -373,7 +374,9 @@ public static class DatabaseSeeder
         MakeNotice(19, "147", "Reassessment closed", NoticeWorkflowStatus.Closed, today.AddDays(-42), today.AddDays(-32), now.AddDays(-30)),
         MakeNotice(20, "246A", "Appeal filed closed", NoticeWorkflowStatus.Closed, today.AddDays(-38), today.AddDays(-28), now.AddDays(-26)),
         MakeNotice(21, "250", "CIT(A) order closed", NoticeWorkflowStatus.Closed, today.AddDays(-36), today.AddDays(-26), now.AddDays(-24)),
-        MakeNotice(22, "156", "Outstanding demand order", NoticeWorkflowStatus.Open, today.AddDays(-15), today.AddDays(10), kind: NoticeKind.DirectOrder)
+        MakeNotice(22, "156", "Outstanding demand order", NoticeWorkflowStatus.Open, today.AddDays(-15), today.AddDays(10), kind: NoticeKind.DirectOrder),
+        MakeNotice(23, "Manual", "CA letter uploaded offline", NoticeWorkflowStatus.Open, today.AddDays(-7), today.AddDays(14), kind: NoticeKind.Manual),
+        MakeNotice(24, "Case", "Assessment case tracking — awaiting AO", NoticeWorkflowStatus.InProgress, today.AddDays(-21), today.AddDays(30), kind: NoticeKind.CaseStatus)
     ];
 
     private static Notice MakeNotice(
@@ -613,5 +616,43 @@ public static class DatabaseSeeder
 
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Ensured demo OrganizationSubscription quotas for {Org}", SeedOrganizationName);
+    }
+
+    public static async Task SeedDemoNoticeAttachmentsAsync(
+        NoticeSaaSDbContext db,
+        NoticeAttachmentStorage storage,
+        ILogger logger,
+        CancellationToken cancellationToken = default)
+    {
+        var noticeId = Guid.Parse("55555555-5555-5555-5555-000000000001");
+        if (!await db.Notices.AnyAsync(n => n.Id == noticeId, cancellationToken))
+        {
+            return;
+        }
+
+        var attachmentId = Guid.Parse("66666666-6666-6666-6666-000000000001");
+        var existing = await db.NoticeAttachments.FirstOrDefaultAsync(a => a.Id == attachmentId, cancellationToken);
+        const string storedName = "seed-notice-1432.pdf";
+        // Minimal PDF header so browsers open something downloadable.
+        var pdfBytes = "%PDF-1.1\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"u8.ToArray();
+        await storage.EnsureSeedFileAsync(storedName, pdfBytes, cancellationToken);
+
+        if (existing is null)
+        {
+            db.NoticeAttachments.Add(new NoticeAttachment
+            {
+                Id = attachmentId,
+                NoticeId = noticeId,
+                Category = "NoticeDocument",
+                FileName = "scrutiny-notice-1432.pdf",
+                ContentType = "application/pdf",
+                StoredFileName = storedName,
+                SizeBytes = pdfBytes.Length,
+                UploadedByUserId = SeedAdminUserId,
+                CreatedAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Seeded demo notice PDF attachment for notice {NoticeId}", noticeId);
+        }
     }
 }

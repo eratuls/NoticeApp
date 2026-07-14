@@ -5,6 +5,17 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
+interface NoticeAttachment {
+  id: string;
+  category: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByName: string;
+  createdAtUtc: string;
+  downloadUrl: string;
+}
+
 interface NoticeDetail {
   id: string;
   clientId: string;
@@ -20,8 +31,17 @@ interface NoticeDetail {
   servedDate: string | null;
   responseDueDate: string | null;
   responseSubmittedDate: string | null;
+  assignedToUserId: string | null;
+  assignedToName: string | null;
   comments: { id: string; authorName: string; body: string; createdAtUtc: string }[];
   timeline: { id: string; fromStatus: string | null; toStatus: string; note: string | null; createdAtUtc: string }[];
+  attachments: NoticeAttachment[];
+}
+
+interface TeamMemberOption {
+  userId: string;
+  firstName: string;
+  lastName: string;
 }
 
 @Component({
@@ -46,12 +66,24 @@ export class NoticeDetailComponent implements OnInit {
   readonly reminderNote = signal('');
   readonly reminderSaving = signal(false);
   readonly reminderMessage = signal('');
+  readonly members = signal<TeamMemberOption[]>([]);
+  readonly assigneeId = signal('');
+  readonly assigning = signal(false);
+  readonly uploadMessage = signal('');
+  readonly uploading = signal(false);
 
   readonly statuses = ['New', 'Open', 'InProgress', 'Replied', 'Closed'];
   readonly priorities = ['High', 'Medium', 'Low'];
 
   ngOnInit(): void {
+    this.loadMembers();
     this.load();
+  }
+
+  loadMembers(): void {
+    this.http.get<{ members: TeamMemberOption[] }>(`${environment.apiBaseUrl}/api/v1/team`).subscribe({
+      next: (res) => this.members.set(res.members ?? [])
+    });
   }
 
   load(): void {
@@ -67,6 +99,7 @@ export class NoticeDetailComponent implements OnInit {
       next: (n) => {
         this.notice.set(n);
         this.status.set(n.status);
+        this.assigneeId.set(n.assignedToUserId ?? '');
         if (!this.reminderDue()) {
           this.reminderDue.set(n.responseDueDate || new Date().toISOString().slice(0, 10));
         }
@@ -100,6 +133,29 @@ export class NoticeDetailComponent implements OnInit {
         error: () => {
           this.saving.set(false);
           this.error.set('Unable to update status.');
+        }
+      });
+  }
+
+  assign(): void {
+    const n = this.notice();
+    if (!n) {
+      return;
+    }
+    this.assigning.set(true);
+    this.http
+      .patch<NoticeDetail>(`${environment.apiBaseUrl}/api/v1/notices/${n.id}/assign`, {
+        assignedToUserId: this.assigneeId() || null
+      })
+      .subscribe({
+        next: (updated) => {
+          this.notice.set(updated);
+          this.assigneeId.set(updated.assignedToUserId ?? '');
+          this.assigning.set(false);
+        },
+        error: () => {
+          this.assigning.set(false);
+          this.error.set('Unable to assign notice.');
         }
       });
   }
@@ -148,5 +204,37 @@ export class NoticeDetailComponent implements OnInit {
           this.reminderMessage.set('Unable to schedule reminder.');
         }
       });
+  }
+
+  downloadUrl(a: NoticeAttachment): string {
+    return `${environment.apiBaseUrl}${a.downloadUrl}`;
+  }
+
+  onFileSelected(event: Event, category: 'NoticeDocument' | 'Reply'): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const n = this.notice();
+    if (!file || !n) {
+      return;
+    }
+
+    const form = new FormData();
+    form.append('category', category);
+    form.append('file', file);
+
+    this.uploading.set(true);
+    this.uploadMessage.set('');
+    this.http.post(`${environment.apiBaseUrl}/api/v1/notices/${n.id}/attachments`, form).subscribe({
+      next: () => {
+        this.uploading.set(false);
+        this.uploadMessage.set(`${category === 'Reply' ? 'Reply' : 'Notice'} document uploaded.`);
+        input.value = '';
+        this.load();
+      },
+      error: () => {
+        this.uploading.set(false);
+        this.uploadMessage.set('Upload failed.');
+      }
+    });
   }
 }

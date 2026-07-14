@@ -15,6 +15,8 @@ interface NoticeListItem {
   isOverdue: boolean;
   servedDate: string | null;
   responseDueDate: string | null;
+  assignedToName: string | null;
+  hasNoticeDocument: boolean;
 }
 
 interface ClientNoticesResponse {
@@ -59,7 +61,15 @@ export class ClientNoticesComponent implements OnInit {
   readonly otpJobId = signal<string | null>(null);
   readonly otpSubmitting = signal(false);
   readonly otpError = signal('');
+  readonly showManualForm = signal(false);
+  readonly manualSaving = signal(false);
+  readonly manualError = signal('');
   otpCode = '';
+  manualSection = '';
+  manualDescription = '';
+  manualFy = '2024-25';
+  manualDin = '';
+  manualDue = '';
 
   readonly tabs = [
     { key: 'Notice', label: 'Notices' },
@@ -197,6 +207,49 @@ export class ClientNoticesComponent implements OnInit {
         error: (err) => {
           this.otpSubmitting.set(false);
           this.otpError.set(err?.error?.message ?? 'Unable to submit OTP.');
+        }
+      });
+  }
+
+  openManualForm(): void {
+    this.showManualForm.set(true);
+    this.manualError.set('');
+    this.manualSection = '';
+    this.manualDescription = '';
+    this.manualFy = '2024-25';
+    this.manualDin = '';
+    this.manualDue = '';
+  }
+
+  closeManualForm(): void {
+    this.showManualForm.set(false);
+  }
+
+  createManual(): void {
+    const clientId = this.clientId();
+    if (!clientId) {
+      return;
+    }
+    this.manualSaving.set(true);
+    this.manualError.set('');
+    this.http
+      .post(`${environment.apiBaseUrl}/api/v1/clients/${clientId}/notices/manual`, {
+        section: this.manualSection,
+        description: this.manualDescription,
+        financialYear: this.manualFy || null,
+        documentReferenceId: this.manualDin || null,
+        responseDueDate: this.manualDue || null
+      })
+      .subscribe({
+        next: () => {
+          this.manualSaving.set(false);
+          this.closeManualForm();
+          this.kind.set('Manual');
+          this.load();
+        },
+        error: (err) => {
+          this.manualSaving.set(false);
+          this.manualError.set(err?.error?.message ?? 'Unable to create manual notice.');
         }
       });
   }

@@ -88,6 +88,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddSingleton<NoticeAttachmentStorage>();
         services.AddScoped<INoticeService, NoticeService>();
         services.AddScoped<IReminderService, ReminderService>();
         services.AddScoped<INotificationService, NotificationService>();
@@ -132,5 +133,8 @@ public static class DependencyInjection
 
         await db.Database.MigrateAsync(cancellationToken);
         await DatabaseSeeder.SeedAsync(db, logger, protector, cancellationToken);
+
+        var attachmentStorage = scope.ServiceProvider.GetRequiredService<NoticeAttachmentStorage>();
+        await DatabaseSeeder.SeedDemoNoticeAttachmentsAsync(db, attachmentStorage, logger, cancellationToken);
     }
 }

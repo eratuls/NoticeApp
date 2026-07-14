@@ -72,6 +72,9 @@
           placeholder="Search DIN / section / description"
         />
         <button type="button" class="ghost" (click)="load()">Search</button>
+        @if (kind() === 'Manual') {
+          <button type="button" class="primary" (click)="openManualForm()">+ Add manual</button>
+        }
       </div>
 
       @if (d.notices.length === 0) {
@@ -84,7 +87,8 @@
                 <th>Section / description</th>
                 <th>DIN</th>
                 <th>FY</th>
-                <th>Served</th>
+                <th>Assigned</th>
+                <th>Doc</th>
                 <th>Due</th>
                 <th>Status</th>
                 <th></th>
@@ -99,7 +103,8 @@
                   </td>
                   <td>{{ n.documentReferenceId || '—' }}</td>
                   <td>{{ n.financialYear || '—' }}</td>
-                  <td>{{ n.servedDate || '—' }}</td>
+                  <td>{{ n.assignedToName || '—' }}</td>
+                  <td>{{ n.hasNoticeDocument ? 'PDF' : '—' }}</td>
                   <td>{{ n.responseDueDate || '—' }}</td>
                   <td>
                     <span class="pill" [attr.data-overdue]="n.isOverdue">{{ n.isOverdue ? 'Overdue' : n.status }}</span>
@@ -117,6 +122,43 @@
     }
   }
 </section>
+
+@if (showManualForm()) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true">
+    <form class="modal" (ngSubmit)="createManual()">
+      <h2>Add manual notice</h2>
+      <label>
+        <span>Section</span>
+        <input name="manualSection" [(ngModel)]="manualSection" required />
+      </label>
+      <label>
+        <span>Description</span>
+        <input name="manualDescription" [(ngModel)]="manualDescription" required />
+      </label>
+      <label>
+        <span>Financial year</span>
+        <input name="manualFy" [(ngModel)]="manualFy" />
+      </label>
+      <label>
+        <span>Document reference</span>
+        <input name="manualDin" [(ngModel)]="manualDin" />
+      </label>
+      <label>
+        <span>Due date</span>
+        <input type="date" name="manualDue" [(ngModel)]="manualDue" />
+      </label>
+      @if (manualError()) {
+        <p class="state error">{{ manualError() }}</p>
+      }
+      <div class="actions">
+        <button type="button" class="ghost" (click)="closeManualForm()" [disabled]="manualSaving()">Cancel</button>
+        <button type="submit" class="primary" [disabled]="manualSaving()">
+          {{ manualSaving() ? 'Saving…' : 'Add notice' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
 
 @if (otpJobId()) {
   <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="otp-title">
