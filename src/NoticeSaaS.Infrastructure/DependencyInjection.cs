@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddSyncServices();
 
         services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
         var authOptions = configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
         if (string.IsNullOrWhiteSpace(authOptions.Jwt.SigningKey) || authOptions.Jwt.SigningKey.Length < 32)
         {
@@ -88,7 +89,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IClientService, ClientService>();
-        services.AddSingleton<NoticeAttachmentStorage>();
+        RegisterNoticeAttachmentStorage(services, configuration);
         services.AddScoped<INoticeService, NoticeService>();
         services.AddScoped<IReminderService, ReminderService>();
         services.AddScoped<INotificationService, NotificationService>();
@@ -119,6 +120,29 @@ public static class DependencyInjection
         return services;
     }
 
+    private static void RegisterNoticeAttachmentStorage(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var provider = configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>()?.Provider
+            ?? StorageProviders.Local;
+
+        if (string.Equals(provider, StorageProviders.AzureBlob, StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<INoticeAttachmentStorage, AzureBlobNoticeAttachmentStorage>();
+            return;
+        }
+
+        if (!string.Equals(provider, StorageProviders.Local, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(provider))
+        {
+            throw new InvalidOperationException(
+                $"Storage:Provider '{provider}' is not supported. Use '{StorageProviders.Local}' or '{StorageProviders.AzureBlob}'.");
+        }
+
+        services.AddSingleton<INoticeAttachmentStorage, LocalNoticeAttachmentStorage>();
+    }
+
     public static async Task InitializeDatabaseAsync(
         this IServiceProvider services,
         CancellationToken cancellationToken = default)
@@ -134,7 +158,7 @@ public static class DependencyInjection
         await db.Database.MigrateAsync(cancellationToken);
         await DatabaseSeeder.SeedAsync(db, logger, protector, cancellationToken);
 
-        var attachmentStorage = scope.ServiceProvider.GetRequiredService<NoticeAttachmentStorage>();
+        var attachmentStorage = scope.ServiceProvider.GetRequiredService<INoticeAttachmentStorage>();
         await DatabaseSeeder.SeedDemoNoticeAttachmentsAsync(db, attachmentStorage, logger, cancellationToken);
     }
 }

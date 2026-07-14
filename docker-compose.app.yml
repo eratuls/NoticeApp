@@ -12,6 +12,7 @@ services:
       Auth__Jwt__Audience: "NoticeSaaS.Web"
       Auth__SessionIdleMinutes: "10"
       Auth__Jwt__AccessTokenMinutes: "60"
+      Storage__Provider: "Local"
       Storage__NoticeAttachmentsPath: "/data/notice-attachments"
       DataProtection__KeysPath: "/data/dp-keys"
     ports:
