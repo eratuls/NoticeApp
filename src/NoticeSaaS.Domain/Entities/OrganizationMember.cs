@@ -16,5 +16,13 @@ public class OrganizationMember
 
     public Role Role { get; set; } = null!;
 
+    public Guid? DepartmentId { get; set; }
+
+    public Department? Department { get; set; }
+
+    public Guid? DesignationId { get; set; }
+
+    public Designation? Designation { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; }
 }

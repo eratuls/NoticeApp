@@ -1,13 +1,13 @@
-# NoticeSaaS - Day 10 (OTP-assisted portal sync)
+# NoticeSaaS - Day 11 (Phase 1 polish: Team + Master)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 10 done when
+## Day 11 done when
 
-- [x] Detect vault/OTP-required portal accounts during sync login
-- [x] Pause sync job awaiting user OTP; API + UI handoff to submit OTP
-- [x] Resume worker after OTP; complete notice upsert or fail cleanly on timeout
-- [x] Tests for OTP pause / resume path (mock portal)
+- [x] Dashboard shows clients, team, notices, and New/Ongoing/Closed/Overdue buckets
+- [x] Team list + Add Member (department Income Tax / GST / TDS / Accounting)
+- [x] Master Departments / Designations CRUD + Roles list
+- [x] Tests for master CRUD and team add path
 
 ### Auth
 
@@ -15,14 +15,12 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
 
-### OTP-assisted sync (mock portal)
+### Seeded master data
 
-| Portal password | Behavior |
-|-----------------|----------|
-| Normal password | Unattended sync (Day 8 path) |
-| `vault-otp` | Job pauses as `AwaitingOtp`; submit OTP `123456` in UI to resume |
-
-Timeout: 5 minutes without OTP → job fails.
+| Type | Values |
+|------|--------|
+| Departments | Accounting, GST, Income Tax, TDS |
+| Designations | Partner, Manager, Associate, Article Assistant |
 
 ### Run
 
@@ -37,8 +35,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → Clients → add a client with portal password `vault-otp` → Sync now → enter OTP `123456`.
+Open http://localhost:4200 → **Team** to add members, **Master** for departments/designations.
 
-## Next - Day 11
+## Next - Day 12
 
-Phase 1 polish from acceptance checklist (dashboard buckets, team, master data gaps).
+Phase 1 wrap-up: acceptance checklist gaps (notice detail polish, reminders/calendar stubs), prep for Phase 1.5 or rollout.

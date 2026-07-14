@@ -28,5 +28,15 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
             .WithMany(x => x.Members)
             .HasForeignKey(x => x.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Department)
+            .WithMany(x => x.Members)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(x => x.Designation)
+            .WithMany(x => x.Members)
+            .HasForeignKey(x => x.DesignationId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

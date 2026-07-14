@@ -1,0 +1,101 @@
+<section class="page">
+  <header class="intro">
+    <p class="brand-line">NoticeSaaS</p>
+    <h1>Master settings</h1>
+    <p class="lede">Maintain departments, designations, and workspace roles.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" [class.active]="tab() === 'departments'" (click)="setTab('departments')">
+      Departments
+    </button>
+    <button type="button" role="tab" [class.active]="tab() === 'designations'" (click)="setTab('designations')">
+      Designations
+    </button>
+    <button type="button" role="tab" [class.active]="tab() === 'roles'" (click)="setTab('roles')">
+      Roles
+    </button>
+  </div>
+
+  @if (tab() !== 'roles') {
+    <div class="toolbar">
+      <button type="button" class="primary" (click)="openCreate()">+ Add {{ tab() === 'departments' ? 'department' : 'designation' }}</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="state">Loading…</p>
+  } @else if (error()) {
+    <p class="state error">{{ error() }}</p>
+  } @else if (items().length === 0) {
+    <p class="state">No items yet.</p>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            @if (tab() === 'roles') {
+              <th>Description</th>
+              <th>System</th>
+            } @else {
+              <th>Status</th>
+              <th></th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr>
+              <td>{{ item.name }}</td>
+              @if (tab() === 'roles') {
+                <td>{{ item.description || '—' }}</td>
+                <td>{{ item.isSystem ? 'Yes' : 'No' }}</td>
+              } @else {
+                <td>{{ item.isActive ? 'Active' : 'Inactive' }}</td>
+                <td class="actions">
+                  <button type="button" class="ghost" (click)="openEdit(item)">Edit</button>
+                  <button type="button" class="ghost" (click)="remove(item)">Delete</button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-backdrop" (click)="closeForm()">
+      <div class="modal" (click)="$event.stopPropagation()" role="dialog" aria-label="Edit master item">
+        <header>
+          <h2>{{ editing() ? 'Edit' : 'Add' }} {{ tab() === 'departments' ? 'department' : 'designation' }}</h2>
+          <button type="button" class="ghost" (click)="closeForm()">Close</button>
+        </header>
+
+        <label>
+          Name
+          <input [(ngModel)]="name" name="name" />
+        </label>
+
+        @if (editing()) {
+          <label class="check">
+            <input type="checkbox" [(ngModel)]="isActive" name="isActive" />
+            Active
+          </label>
+        }
+
+        @if (formError()) {
+          <p class="state error">{{ formError() }}</p>
+        }
+
+        <div class="actions">
+          <button type="button" class="ghost" (click)="closeForm()" [disabled]="saving()">Cancel</button>
+          <button type="button" class="primary" (click)="save()" [disabled]="saving()">
+            {{ saving() ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</section>

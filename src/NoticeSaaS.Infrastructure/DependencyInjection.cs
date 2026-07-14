@@ -10,18 +10,22 @@ using NoticeSaaS.Application.Auth;
 using NoticeSaaS.Application.Billing;
 using NoticeSaaS.Application.Clients;
 using NoticeSaaS.Application.Dashboard;
+using NoticeSaaS.Application.Master;
 using NoticeSaaS.Application.Notices;
 using NoticeSaaS.Application.Notifications;
 using NoticeSaaS.Application.Reminders;
 using NoticeSaaS.Application.Sync;
+using NoticeSaaS.Application.Team;
 using NoticeSaaS.Infrastructure.Auth;
 using NoticeSaaS.Infrastructure.Billing;
 using NoticeSaaS.Infrastructure.Clients;
 using NoticeSaaS.Infrastructure.Dashboard;
+using NoticeSaaS.Infrastructure.Master;
 using NoticeSaaS.Infrastructure.Notices;
 using NoticeSaaS.Infrastructure.Notifications;
 using NoticeSaaS.Infrastructure.Reminders;
 using NoticeSaaS.Infrastructure.Sync;
+using NoticeSaaS.Infrastructure.Team;
 using NoticeSaaS.Infrastructure.Persistence;
 using NoticeSaaS.Infrastructure.Persistence.Seed;
 
@@ -87,6 +91,8 @@ public static class DependencyInjection
         services.AddScoped<INoticeService, NoticeService>();
         services.AddScoped<IReminderService, ReminderService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IMasterDataService, MasterDataService>();
+        services.AddScoped<ITeamService, TeamService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services

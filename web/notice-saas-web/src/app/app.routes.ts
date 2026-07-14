@@ -22,11 +22,8 @@ export const routes: Routes = [
       },
       {
         path: 'team',
-        data: { title: 'Team' },
         loadComponent: () =>
-          import('./features/placeholder/placeholder-page.component').then(
-            (m) => m.PlaceholderPageComponent
-          )
+          import('./features/team/team.component').then((m) => m.TeamComponent)
       },
       {
         path: 'clients',
@@ -47,6 +44,13 @@ export const routes: Routes = [
         path: 'reminders',
         loadComponent: () =>
           import('./features/reminders/reminders.component').then((m) => m.RemindersComponent)
+      },
+      {
+        path: 'settings/master',
+        loadComponent: () =>
+          import('./features/settings/master-settings.component').then(
+            (m) => m.MasterSettingsComponent
+          )
       },
       {
         path: 'settings/usage',
