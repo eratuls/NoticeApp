@@ -27,6 +27,7 @@ public class NoticeConfiguration : IEntityTypeConfiguration<Notice>
         builder.HasIndex(x => new { x.OrganizationId, x.Status });
         builder.HasIndex(x => new { x.ClientId, x.Kind });
         builder.HasIndex(x => new { x.OrganizationId, x.ResponseDueDate });
+        builder.HasIndex(x => x.AssignedToUserId);
 
         builder.HasOne(x => x.Organization)
             .WithMany()
@@ -37,5 +38,10 @@ public class NoticeConfiguration : IEntityTypeConfiguration<Notice>
             .WithMany(x => x.Notices)
             .HasForeignKey(x => x.ClientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.AssignedTo)
+            .WithMany()
+            .HasForeignKey(x => x.AssignedToUserId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

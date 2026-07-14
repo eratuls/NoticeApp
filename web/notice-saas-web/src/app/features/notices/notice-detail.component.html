@@ -17,6 +17,9 @@
         <p class="lede">
           {{ n.proceedingId || 'No proceeding id' }} · Section {{ n.section }}
           · <span [attr.data-overdue]="n.isOverdue">{{ n.isOverdue ? 'Overdue' : n.status }}</span>
+          @if (n.assignedToName) {
+            · Assigned to {{ n.assignedToName }}
+          }
         </p>
       </header>
 
@@ -31,6 +34,19 @@
         </label>
         <button type="button" class="primary" (click)="updateStatus()" [disabled]="saving()">
           {{ saving() ? 'Saving…' : 'Save status' }}
+        </button>
+
+        <label>
+          <span>Assign</span>
+          <select [ngModel]="assigneeId()" (ngModelChange)="assigneeId.set($event)">
+            <option value="">Unassigned</option>
+            @for (m of members(); track m.userId) {
+              <option [value]="m.userId">{{ m.firstName }} {{ m.lastName }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="ghost" (click)="assign()" [disabled]="assigning()">
+          {{ assigning() ? 'Assigning…' : 'Save assignee' }}
         </button>
       </div>
 
@@ -75,7 +91,38 @@
 
       <section class="docs">
         <h2>Attachments</h2>
-        <p class="empty">No notice PDF uploaded yet. Manual reply upload arrives next.</p>
+        <div class="upload-row">
+          <label class="file-btn">
+            Upload notice PDF
+            <input type="file" accept=".pdf,application/pdf" (change)="onFileSelected($event, 'NoticeDocument')" />
+          </label>
+          <label class="file-btn">
+            Upload reply
+            <input type="file" (change)="onFileSelected($event, 'Reply')" />
+          </label>
+          @if (uploading()) {
+            <span class="muted">Uploading…</span>
+          }
+          @if (uploadMessage()) {
+            <span class="upload-msg">{{ uploadMessage() }}</span>
+          }
+        </div>
+
+        @if (n.attachments.length === 0) {
+          <p class="empty">No documents yet. Upload a notice PDF or reply file.</p>
+        } @else {
+          <ul class="doc-list">
+            @for (a of n.attachments; track a.id) {
+              <li>
+                <div>
+                  <strong>{{ a.fileName }}</strong>
+                  <p class="sub">{{ a.category }} · {{ a.uploadedByName }} · {{ a.createdAtUtc | date: 'medium' }}</p>
+                </div>
+                <a class="ghost" [href]="downloadUrl(a)" target="_blank" rel="noopener">Download</a>
+              </li>
+            }
+          </ul>
+        }
       </section>
 
       <div class="split">

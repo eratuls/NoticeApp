@@ -26,6 +26,14 @@ export const routes: Routes = [
           import('./features/team/team.component').then((m) => m.TeamComponent)
       },
       {
+        path: 'calendar',
+        data: { title: 'Calendar' },
+        loadComponent: () =>
+          import('./features/placeholder/placeholder-page.component').then(
+            (m) => m.PlaceholderPageComponent
+          )
+      },
+      {
         path: 'clients',
         loadComponent: () =>
           import('./features/clients/clients.component').then((m) => m.ClientsComponent)

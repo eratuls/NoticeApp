@@ -1,26 +1,19 @@
-# NoticeSaaS - Day 11 (Phase 1 polish: Team + Master)
+# NoticeSaaS - Day 12 (Phase 1 wrap-up)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 11 done when
+## Day 12 done when
 
-- [x] Dashboard shows clients, team, notices, and New/Ongoing/Closed/Overdue buckets
-- [x] Team list + Add Member (department Income Tax / GST / TDS / Accounting)
-- [x] Master Departments / Designations CRUD + Roles list
-- [x] Tests for master CRUD and team add path
+- [x] Notice PDF + reply uploads on notice detail (downloadable attachments)
+- [x] Assign notice to a team member
+- [x] Calendar shell stub; Manual / Case Status seed + Add manual notice
+- [x] Tests for assign + attachment upload/download
 
 ### Auth
 
 | Email | Password |
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
-
-### Seeded master data
-
-| Type | Values |
-|------|--------|
-| Departments | Accounting, GST, Income Tax, TDS |
-| Designations | Partner, Manager, Associate, Article Assistant |
 
 ### Run
 
@@ -35,8 +28,8 @@ cd web/notice-saas-web
 npm start
 ```
 
-Open http://localhost:4200 → **Team** to add members, **Master** for departments/designations.
+Open a notice → upload PDF/reply, assign a team member. Calendar is a Phase 1 stub in the shell.
 
-## Next - Day 12
+## Next - Day 13
 
-Phase 1 wrap-up: acceptance checklist gaps (notice detail polish, reminders/calendar stubs), prep for Phase 1.5 or rollout.
+Phase 1.5 / rollout prep: live portal hardening, Azure packaging, or optional AI analyzer.

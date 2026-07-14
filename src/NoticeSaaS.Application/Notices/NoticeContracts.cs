@@ -13,7 +13,9 @@ public sealed record NoticeListItemDto(
     bool IsOverdue,
     DateOnly? ServedDate,
     DateOnly? ResponseDueDate,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    string? AssignedToName,
+    bool HasNoticeDocument);
 
 public sealed record NoticeCommentDto(
     Guid Id,
@@ -27,6 +29,16 @@ public sealed record NoticeStatusEventDto(
     string ToStatus,
     string? Note,
     DateTimeOffset CreatedAtUtc);
+
+public sealed record NoticeAttachmentDto(
+    Guid Id,
+    string Category,
+    string FileName,
+    string ContentType,
+    long SizeBytes,
+    string UploadedByName,
+    DateTimeOffset CreatedAtUtc,
+    string DownloadUrl);
 
 public sealed record NoticeDetailDto(
     Guid Id,
@@ -46,8 +58,11 @@ public sealed record NoticeDetailDto(
     DateOnly? ResponseDueDate,
     DateOnly? ResponseSubmittedDate,
     DateTimeOffset CreatedAtUtc,
+    Guid? AssignedToUserId,
+    string? AssignedToName,
     IReadOnlyList<NoticeCommentDto> Comments,
-    IReadOnlyList<NoticeStatusEventDto> Timeline);
+    IReadOnlyList<NoticeStatusEventDto> Timeline,
+    IReadOnlyList<NoticeAttachmentDto> Attachments);
 
 public sealed record ClientNoticesResponse(
     Guid ClientId,
@@ -60,6 +75,16 @@ public sealed record ClientNoticesResponse(
 public sealed record UpdateNoticeStatusRequest(string Status, string? Note = null);
 
 public sealed record AddNoticeCommentRequest(string Body);
+
+public sealed record AssignNoticeRequest(Guid? AssignedToUserId);
+
+public sealed record CreateManualNoticeRequest(
+    string Section,
+    string Description,
+    string? FinancialYear,
+    string? DocumentReferenceId,
+    DateOnly? ServedDate,
+    DateOnly? ResponseDueDate);
 
 public interface INoticeService
 {
@@ -87,5 +112,33 @@ public interface INoticeService
         Guid noticeId,
         Guid userId,
         AddNoticeCommentRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<NoticeDetailDto?> AssignAsync(
+        Guid organizationId,
+        Guid noticeId,
+        AssignNoticeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<NoticeListItemDto?> CreateManualAsync(
+        Guid organizationId,
+        Guid clientId,
+        CreateManualNoticeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<NoticeAttachmentDto?> UploadAttachmentAsync(
+        Guid organizationId,
+        Guid noticeId,
+        Guid userId,
+        string category,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken = default);
+
+    Task<(Stream Stream, string ContentType, string FileName)?> OpenAttachmentAsync(
+        Guid organizationId,
+        Guid noticeId,
+        Guid attachmentId,
         CancellationToken cancellationToken = default);
 }

@@ -40,9 +40,15 @@ public class Notice
 
     public DateTimeOffset? ClosedAtUtc { get; set; }
 
+    public Guid? AssignedToUserId { get; set; }
+
+    public User? AssignedTo { get; set; }
+
     public ICollection<NoticeComment> Comments { get; set; } = new List<NoticeComment>();
 
     public ICollection<NoticeStatusEvent> StatusEvents { get; set; } = new List<NoticeStatusEvent>();
+
+    public ICollection<NoticeAttachment> Attachments { get; set; } = new List<NoticeAttachment>();
 
     public bool IsOverdue(DateOnly today) =>
         Status != NoticeWorkflowStatus.Closed
