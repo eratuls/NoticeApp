@@ -467,14 +467,16 @@ Sensitive payloads (credentials, PAN, notices): TLS + optional RSA/AES envelope 
 
 ## 13. Acceptance Criteria (Match Video)
 
-- [ ] Dashboard shows clients, team, notices, and New/Ongoing/Closed/Overdue buckets  
-- [ ] Add Income Tax client with category, sync type, username, password  
-- [ ] Client notice list with Notices / Direct Orders / Manual / Case Status  
-- [ ] Notice detail with metadata, PDF, reply uploads, status, timeline, comments  
-- [ ] Team Add Member with department Income Tax / GST / TDS / Accounting  
-- [ ] Master Departments CRUD  
-- [ ] Session timer + one active session  
-- [ ] Sync credits visible; Usage & Limits modal shows Assesse + Sync Credit quotas  
+- [x] Dashboard shows clients, team, notices, and New/Ongoing/Closed/Overdue buckets  
+- [x] Add Income Tax client with category, sync type, username, password  
+- [x] Client notice list with Notices / Direct Orders / Manual / Case Status  
+- [x] Notice detail with metadata, PDF, reply uploads, status, timeline, comments  
+- [x] Team Add Member with department Income Tax / GST / TDS / Accounting  
+- [x] Master Departments CRUD  
+- [x] Session timer + one active session  
+- [x] Sync credits visible; Usage & Limits modal shows Assesse + Sync Credit quotas  
+
+> Phase 1 verified via Day 17 smoke checklist (`README.md`, `scripts/smoke-phase1.ps1`).
 
 ---
 
