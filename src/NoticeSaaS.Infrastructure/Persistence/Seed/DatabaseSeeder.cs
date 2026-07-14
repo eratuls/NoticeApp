@@ -620,7 +620,7 @@ public static class DatabaseSeeder
 
     public static async Task SeedDemoNoticeAttachmentsAsync(
         NoticeSaaSDbContext db,
-        NoticeAttachmentStorage storage,
+        INoticeAttachmentStorage storage,
         ILogger logger,
         CancellationToken cancellationToken = default)
     {

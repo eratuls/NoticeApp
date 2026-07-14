@@ -1,13 +1,12 @@
-# NoticeSaaS - Day 13 (Azure packaging + CI)
+﻿# NoticeSaaS - Day 14 (Azure deploy skeleton)
 
 Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-ready.
 
-## Day 13 done when
+## Day 14 done when
 
-- [x] Multi-stage Dockerfiles for API and Angular web
-- [x] Compose overlay to run API + web against local SQL
-- [x] GitHub Actions CI (restore, build, test)
-- [x] API applies migrations on startup (not only Development)
+- [x] Bicep skeleton for Container Apps + Azure SQL + Blob Storage (`infra/`)
+- [x] Attachments: Local (dev) vs Azure Blob (prod) via `Storage:Provider`
+- [x] Deploy docs for secrets (JWT, SQL, DataProtection, Blob)
 
 ### Auth
 
@@ -15,32 +14,51 @@ Income Tax notice SaaS: **Angular** web + **ASP.NET Core** API + workers, Azure-
 |-------|----------|
 | `admin@noticesaas.local` | `Admin@12345` |
 
-### Packaging
+### Attachment storage
+
+| Environment | `Storage:Provider` | Notes |
+|-------------|--------------------|--------|
+| Development | `Local` | Files under `Storage:NoticeAttachmentsPath` (or temp dir) |
+| Production | `AzureBlob` | Uses `Storage:AzureBlob:ConnectionString` + `ContainerName` |
+
+```text
+Storage__Provider=AzureBlob
+Storage__AzureBlob__ConnectionString=...
+Storage__AzureBlob__ContainerName=notice-attachments
+```
+
+### Azure deploy (skeleton)
 
 ```powershell
-# SQL only (dev)
-docker compose up -d
+az group create -n rg-noticesaas -l eastus
 
-# Full stack locally
+az deployment group create `
+  -g rg-noticesaas `
+  -f infra/main.bicep `
+  -p infra/main.bicepparam `
+  -p sqlAdminPassword='<strong-password>' `
+     jwtSigningKey='<32+-char-secret>' `
+     apiImage='<acr>/noticesaas-api:tag' `
+     webImage='<acr>/noticesaas-web:tag'
+```
+
+**Secrets to inject (never commit):**
+
+| Setting | Purpose |
+|---------|---------|
+| `ConnectionStrings__Default` | Azure SQL |
+| `Auth__Jwt__SigningKey` | JWT (≥32 chars) |
+| `Storage__AzureBlob__ConnectionString` | Blob attachments |
+| `DataProtection__KeysPath` / shared volume / blob | ASP.NET DataProtection key ring |
+
+Wire CORS `Cors__AngularOrigins__0` to the web Container App HTTPS URL after first deploy.
+
+### Local packaging
+
+```powershell
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 ```
 
-- API: http://localhost:8080/health
-- Web: http://localhost:8088 (proxies `/api` to the API container)
+## Next - Day 15
 
-### Run (host / without containers)
-
-```powershell
-docker compose up -d
-cd src/NoticeSaaS.Api
-dotnet run
-```
-
-```powershell
-cd web/notice-saas-web
-npm start
-```
-
-## Next - Day 14
-
-Optional: Azure Container Apps / App Service ARM-Bicep skeleton, blob storage for attachments, or live portal hardening.
+Live portal hardening or optional AI notice analyzer (Phase 1.5).

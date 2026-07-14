@@ -6,7 +6,7 @@ using NoticeSaaS.Infrastructure.Persistence;
 
 namespace NoticeSaaS.Infrastructure.Notices;
 
-public sealed class NoticeService(NoticeSaaSDbContext db, NoticeAttachmentStorage storage) : INoticeService
+public sealed class NoticeService(NoticeSaaSDbContext db, INoticeAttachmentStorage storage) : INoticeService
 {
     public async Task<ClientNoticesResponse?> ListForClientAsync(
         Guid organizationId,
@@ -374,7 +374,7 @@ public sealed class NoticeService(NoticeSaaSDbContext db, NoticeAttachmentStorag
             return null;
         }
 
-        var stream = storage.OpenRead(attachment.StoredFileName);
+        var stream = await storage.OpenReadAsync(attachment.StoredFileName, cancellationToken);
         if (stream is null)
         {
             return null;
