@@ -9,6 +9,8 @@ public class NoticeSaaSDbContext(DbContextOptions<NoticeSaaSDbContext> options) 
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Designation> Designations => Set<Designation>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Notice> Notices => Set<Notice>();

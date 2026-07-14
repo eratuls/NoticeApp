@@ -31,9 +31,90 @@ public static class DatabaseSeeder
     {
         await SeedRolesAsync(db, cancellationToken);
         await SeedAdminWorkspaceAsync(db, logger, cancellationToken);
+        await SeedMasterDataAsync(db, logger, cancellationToken);
         await SeedDemoClientsAndNoticesAsync(db, logger, portalCredentialProtector, cancellationToken);
         await SeedDemoRemindersAndNotificationsAsync(db, logger, cancellationToken);
         await SeedDemoSubscriptionAsync(db, logger, cancellationToken);
+    }
+
+    private static async Task SeedMasterDataAsync(
+        NoticeSaaSDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.Organizations.AnyAsync(o => o.Id == SeedOrganizationId, cancellationToken))
+        {
+            logger.LogWarning("Skipping master data seed; organization {OrganizationId} is missing.", SeedOrganizationId);
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var departments = new[]
+        {
+            (Guid.Parse("d1000001-0000-0000-0000-000000000001"), "Accounting"),
+            (Guid.Parse("d1000001-0000-0000-0000-000000000002"), "GST"),
+            (Guid.Parse("d1000001-0000-0000-0000-000000000003"), "Income Tax"),
+            (Guid.Parse("d1000001-0000-0000-0000-000000000004"), "TDS")
+        };
+
+        foreach (var (id, name) in departments)
+        {
+            var existing = await db.Departments.FirstOrDefaultAsync(
+                d => d.Id == id || (d.OrganizationId == SeedOrganizationId && d.Name == name),
+                cancellationToken);
+            if (existing is null)
+            {
+                db.Departments.Add(new Department
+                {
+                    Id = id,
+                    OrganizationId = SeedOrganizationId,
+                    Name = name,
+                    IsActive = true,
+                    CreatedAtUtc = now
+                });
+            }
+            else
+            {
+                existing.Name = name;
+                existing.IsActive = true;
+                existing.OrganizationId = SeedOrganizationId;
+            }
+        }
+
+        var designations = new[]
+        {
+            (Guid.Parse("d2000001-0000-0000-0000-000000000001"), "Partner"),
+            (Guid.Parse("d2000001-0000-0000-0000-000000000002"), "Manager"),
+            (Guid.Parse("d2000001-0000-0000-0000-000000000003"), "Associate"),
+            (Guid.Parse("d2000001-0000-0000-0000-000000000004"), "Article Assistant")
+        };
+
+        foreach (var (id, name) in designations)
+        {
+            var existing = await db.Designations.FirstOrDefaultAsync(
+                d => d.Id == id || (d.OrganizationId == SeedOrganizationId && d.Name == name),
+                cancellationToken);
+            if (existing is null)
+            {
+                db.Designations.Add(new Designation
+                {
+                    Id = id,
+                    OrganizationId = SeedOrganizationId,
+                    Name = name,
+                    IsActive = true,
+                    CreatedAtUtc = now
+                });
+            }
+            else
+            {
+                existing.Name = name;
+                existing.IsActive = true;
+                existing.OrganizationId = SeedOrganizationId;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Ensured demo departments and designations for {Organization}", SeedOrganizationName);
     }
 
     private static async Task SeedRolesAsync(NoticeSaaSDbContext db, CancellationToken cancellationToken)
