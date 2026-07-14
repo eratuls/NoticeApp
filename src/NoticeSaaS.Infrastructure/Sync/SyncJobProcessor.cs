@@ -17,14 +17,23 @@ public sealed class SyncJobProcessor(
     IUsageLimitsService usageLimitsService,
     ILogger<SyncJobProcessor> logger) : ISyncJobProcessor
 {
-    private readonly IDataProtector _protector =
+    /// <summary>How long a job may wait for vault OTP before failing.</summary>
+    public static readonly TimeSpan OtpTimeout = TimeSpan.FromMinutes(5);
+
+    private readonly IDataProtector _credentialProtector =
         dataProtectionProvider.CreateProtector("NoticeSaaS.PortalCredentials.v1");
+
+    private readonly IDataProtector _otpProtector =
+        dataProtectionProvider.CreateProtector("NoticeSaaS.SyncJobOtp.v1");
 
     public async Task ProcessPendingAsync(int maxJobs, CancellationToken cancellationToken = default)
     {
+        await FailTimedOutOtpJobsAsync(cancellationToken);
+
         var jobIds = await db.SyncJobs
             .AsNoTracking()
-            .Where(j => j.Status == SyncJobStatus.Pending)
+            .Where(j => j.Status == SyncJobStatus.Pending
+                        || (j.Status == SyncJobStatus.AwaitingOtp && j.SubmittedOtpProtected != null))
             .OrderBy(j => j.CreatedAtUtc)
             .Take(maxJobs)
             .Select(j => j.Id)
@@ -43,7 +52,17 @@ public sealed class SyncJobProcessor(
         var job = await db.SyncJobs.AsNoTracking()
             .FirstOrDefaultAsync(j => j.Id == syncJobId, cancellationToken);
 
-        if (job is null || job.Status is SyncJobStatus.Succeeded or SyncJobStatus.Failed or SyncJobStatus.Running)
+        if (job is null)
+        {
+            return;
+        }
+
+        if (job.Status is SyncJobStatus.Succeeded or SyncJobStatus.Failed or SyncJobStatus.Running)
+        {
+            return;
+        }
+
+        if (job.Status == SyncJobStatus.AwaitingOtp && string.IsNullOrEmpty(job.SubmittedOtpProtected))
         {
             return;
         }
@@ -71,14 +90,29 @@ public sealed class SyncJobProcessor(
             return;
         }
 
-        await MarkRunningAsync(syncJobId, cancellationToken);
+        string? otp = null;
+        if (!string.IsNullOrEmpty(job.SubmittedOtpProtected))
+        {
+            try
+            {
+                otp = _otpProtector.Unprotect(job.SubmittedOtpProtected);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to decrypt submitted OTP for sync job {JobId}", syncJobId);
+                await MarkFailedAsync(syncJobId, "Unable to read submitted OTP.", cancellationToken);
+                return;
+            }
+        }
+
+        await MarkRunningAsync(syncJobId, job.Status, cancellationToken);
 
         try
         {
             string password;
             try
             {
-                password = _protector.Unprotect(client.Credential.PasswordProtected);
+                password = _credentialProtector.Unprotect(client.Credential.PasswordProtected);
             }
             catch (Exception ex)
             {
@@ -88,16 +122,28 @@ public sealed class SyncJobProcessor(
             }
 
             await AddLogAsync(syncJobId, "Info",
-                $"Logging in as {client.Credential.Username} (credentials decrypted in worker).",
+                otp is null
+                    ? $"Logging in as {client.Credential.Username} (credentials decrypted in worker)."
+                    : $"Resuming login as {client.Credential.Username} with user-submitted OTP.",
                 cancellationToken);
 
-            var portalNotices = await portalClient.FetchNoticesAsync(
-                new PortalLoginRequest(
-                    client.Credential.Username,
-                    password,
-                    client.Pan,
-                    client.Name),
-                cancellationToken);
+            IReadOnlyList<PortalNoticeDto> portalNotices;
+            try
+            {
+                portalNotices = await portalClient.FetchNoticesAsync(
+                    new PortalLoginRequest(
+                        client.Credential.Username,
+                        password,
+                        client.Pan,
+                        client.Name),
+                    otp,
+                    cancellationToken);
+            }
+            catch (PortalOtpRequiredException)
+            {
+                await MarkAwaitingOtpAsync(syncJobId, cancellationToken);
+                return;
+            }
 
             await AddLogAsync(syncJobId, "Info", $"Portal returned {portalNotices.Count} notice(s).", cancellationToken);
 
@@ -121,7 +167,8 @@ public sealed class SyncJobProcessor(
                         .SetProperty(j => j.Status, SyncJobStatus.Succeeded)
                         .SetProperty(j => j.CompletedAtUtc, now)
                         .SetProperty(j => j.NoticesUpserted, upserted)
-                        .SetProperty(j => j.ErrorMessage, (string?)null),
+                        .SetProperty(j => j.ErrorMessage, (string?)null)
+                        .SetProperty(j => j.SubmittedOtpProtected, (string?)null),
                     cancellationToken);
 
             await usageLimitsService.ConsumeSyncCreditAsync(job.OrganizationId, syncJobId, cancellationToken);
@@ -134,6 +181,26 @@ public sealed class SyncJobProcessor(
         {
             logger.LogWarning(ex, "Sync job {JobId} failed", syncJobId);
             await MarkFailedAsync(syncJobId, ex.Message, cancellationToken);
+        }
+    }
+
+    private async Task FailTimedOutOtpJobsAsync(CancellationToken cancellationToken)
+    {
+        var cutoff = DateTimeOffset.UtcNow - OtpTimeout;
+        var timedOutIds = await db.SyncJobs
+            .AsNoTracking()
+            .Where(j => j.Status == SyncJobStatus.AwaitingOtp
+                        && j.OtpRequestedAtUtc != null
+                        && j.OtpRequestedAtUtc < cutoff)
+            .Select(j => j.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var id in timedOutIds)
+        {
+            await MarkFailedAsync(
+                id,
+                $"Vault OTP was not submitted within {OtpTimeout.TotalMinutes:0} minutes.",
+                cancellationToken);
         }
     }
 
@@ -204,18 +271,47 @@ public sealed class SyncJobProcessor(
         return upserted;
     }
 
-    private async Task MarkRunningAsync(Guid syncJobId, CancellationToken cancellationToken)
+    private async Task MarkRunningAsync(
+        Guid syncJobId,
+        SyncJobStatus previousStatus,
+        CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
         await db.SyncJobs
-            .Where(j => j.Id == syncJobId && j.Status == SyncJobStatus.Pending)
+            .Where(j => j.Id == syncJobId
+                        && (j.Status == SyncJobStatus.Pending || j.Status == SyncJobStatus.AwaitingOtp))
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(j => j.Status, SyncJobStatus.Running)
-                    .SetProperty(j => j.StartedAtUtc, now),
+                    .SetProperty(j => j.StartedAtUtc, j => j.StartedAtUtc ?? now)
+                    .SetProperty(j => j.SubmittedOtpProtected, (string?)null)
+                    .SetProperty(j => j.ErrorMessage, (string?)null),
                 cancellationToken);
 
-        await AddLogAsync(syncJobId, "Info", "Sync started (password-only portal path).", cancellationToken);
+        var message = previousStatus == SyncJobStatus.AwaitingOtp
+            ? "Sync resumed after OTP submission."
+            : "Sync started (portal login).";
+        await AddLogAsync(syncJobId, "Info", message, cancellationToken);
+    }
+
+    private async Task MarkAwaitingOtpAsync(Guid syncJobId, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        await db.SyncJobs
+            .Where(j => j.Id == syncJobId)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(j => j.Status, SyncJobStatus.AwaitingOtp)
+                    .SetProperty(j => j.OtpRequestedAtUtc, now)
+                    .SetProperty(j => j.SubmittedOtpProtected, (string?)null)
+                    .SetProperty(j => j.ErrorMessage, (string?)null),
+                cancellationToken);
+
+        await AddLogAsync(
+            syncJobId,
+            "Info",
+            "Portal requires vault OTP. Waiting for user to submit the one-time password.",
+            cancellationToken);
     }
 
     private async Task MarkFailedAsync(Guid syncJobId, string message, CancellationToken cancellationToken)
@@ -228,7 +324,8 @@ public sealed class SyncJobProcessor(
                 setters => setters
                     .SetProperty(j => j.Status, SyncJobStatus.Failed)
                     .SetProperty(j => j.CompletedAtUtc, now)
-                    .SetProperty(j => j.ErrorMessage, truncated),
+                    .SetProperty(j => j.ErrorMessage, truncated)
+                    .SetProperty(j => j.SubmittedOtpProtected, (string?)null),
                 cancellationToken);
 
         await AddLogAsync(syncJobId, "Error", truncated, cancellationToken);

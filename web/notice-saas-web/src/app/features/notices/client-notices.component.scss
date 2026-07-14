@@ -29,6 +29,14 @@
   background: var(--copper);
 }
 
+.intro-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
 .brand-line {
   margin: 0;
   font-family: var(--font-display);
@@ -102,6 +110,138 @@ button.ghost {
   padding: 0.7rem 0.95rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+button.primary {
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.primary:disabled,
+button.ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sync-btn {
+  white-space: nowrap;
+}
+
+.sync-panel {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  font-size: 0.9rem;
+}
+
+.sync-panel p {
+  margin: 0;
+}
+
+.sync-status {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sync-status[data-status='Succeeded'] {
+  color: var(--ok);
+}
+
+.sync-status[data-status='Failed'] {
+  color: var(--danger);
+}
+
+.sync-status[data-status='Running'],
+.sync-status[data-status='Pending'],
+.sync-status[data-status='AwaitingOtp'] {
+  color: var(--copper-deep);
+}
+
+.sync-error {
+  margin: 0.35rem 0 0;
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.sync-banner {
+  margin: 0.85rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--copper);
+  background: color-mix(in srgb, var(--copper) 12%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(7, 21, 38, 0.55);
+}
+
+.modal {
+  width: min(28rem, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background: var(--paper);
+  border-top: 3px solid var(--copper);
+  box-shadow: var(--shadow-soft);
+}
+
+.modal h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+}
+
+.modal-lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.modal label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.modal input {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
 }
 
 .state {

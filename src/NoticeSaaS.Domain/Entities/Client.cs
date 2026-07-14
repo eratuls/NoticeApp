@@ -14,6 +14,9 @@ public class Client
 
     public required string Pan { get; set; }
 
+    /// <summary>Masked Aadhaar from Income Tax portal profile (e.g. XXXX-XXXX-1234).</summary>
+    public string? AadhaarMasked { get; set; }
+
     public string? CaPan { get; set; }
 
     public ComplianceModule Module { get; set; } = ComplianceModule.IncomeTax;

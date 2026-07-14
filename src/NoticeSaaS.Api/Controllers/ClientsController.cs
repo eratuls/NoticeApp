@@ -54,6 +54,26 @@ public class ClientsController(IClientService clientService) : ControllerBase
         return CreatedAtAction(nameof(List), new { module = result.Client.Module }, result.Client);
     }
 
+    [HttpDelete("{clientId:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid clientId,
+        CancellationToken cancellationToken = default)
+    {
+        var organizationId = GetOrganizationId();
+        if (organizationId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await clientService.DeleteAsync(organizationId.Value, clientId, cancellationToken);
+        if (!result.Succeeded)
+        {
+            return NotFound(new { message = result.Error ?? "Client not found." });
+        }
+
+        return NoContent();
+    }
+
     private Guid? GetOrganizationId()
     {
         var value = User.FindFirstValue("org_id");

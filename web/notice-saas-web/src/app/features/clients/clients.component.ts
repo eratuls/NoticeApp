@@ -9,6 +9,7 @@ export interface ClientListItem {
   id: string;
   name: string;
   pan: string;
+  aadhaarMasked: string | null;
   caPan: string | null;
   module: string;
   syncFrequency: string;
@@ -30,6 +31,7 @@ export interface SyncJobResult {
   trigger: string;
   noticesUpserted: number;
   errorMessage: string | null;
+  otpRequestedAtUtc: string | null;
 }
 
 @Component({
@@ -52,9 +54,14 @@ export class ClientsComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly syncingId = signal<string | null>(null);
   readonly syncMessage = signal('');
+  readonly otpJob = signal<{ clientId: string; clientName: string; jobId: string } | null>(null);
+  readonly otpSubmitting = signal(false);
+  readonly otpError = signal('');
+  readonly deleteTarget = signal<ClientListItem | null>(null);
+  readonly deletingId = signal<string | null>(null);
+  readonly deleteError = signal('');
+  otpCode = '';
 
-  name = '';
-  pan = '';
   module = 'IncomeTax';
   syncFrequency = 'Weekly';
   portalUsername = '';
@@ -99,13 +106,43 @@ export class ClientsComponent implements OnInit {
     this.formError.set('');
   }
 
+  openDelete(client: ClientListItem): void {
+    this.deleteError.set('');
+    this.deleteTarget.set(client);
+  }
+
+  closeDelete(): void {
+    this.deleteTarget.set(null);
+    this.deleteError.set('');
+  }
+
+  confirmDelete(): void {
+    const target = this.deleteTarget();
+    if (!target) {
+      return;
+    }
+
+    this.deletingId.set(target.id);
+    this.deleteError.set('');
+    this.http.delete(`${environment.apiBaseUrl}/api/v1/clients/${target.id}`).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.closeDelete();
+        this.syncMessage.set(`Deleted ${target.name}. All notices and related data were removed.`);
+        this.load();
+      },
+      error: (err) => {
+        this.deletingId.set(null);
+        this.deleteError.set(err?.error?.message ?? 'Unable to delete client.');
+      }
+    });
+  }
+
   submit(): void {
     this.saving.set(true);
     this.formError.set('');
     this.http
       .post<ClientListItem>(`${environment.apiBaseUrl}/api/v1/clients`, {
-        name: this.name.trim(),
-        pan: this.pan.trim(),
         module: this.module,
         syncFrequency: this.syncFrequency,
         portalUsername: this.portalUsername.trim(),
@@ -115,8 +152,6 @@ export class ClientsComponent implements OnInit {
         next: () => {
           this.saving.set(false);
           this.closeForm();
-          this.name = '';
-          this.pan = '';
           this.portalUsername = '';
           this.portalPassword = '';
           this.syncFrequency = 'Weekly';
@@ -124,7 +159,7 @@ export class ClientsComponent implements OnInit {
         },
         error: (err) => {
           this.saving.set(false);
-          this.formError.set(err?.error?.message ?? 'Unable to add client.');
+          this.formError.set(err?.error?.message ?? 'Unable to add client. Check Income Tax credentials.');
         }
       });
   }
@@ -137,7 +172,14 @@ export class ClientsComponent implements OnInit {
       .subscribe({
         next: (job) => {
           this.syncingId.set(null);
-          if (job.status === 'Succeeded') {
+          if (job.status === 'AwaitingOtp') {
+            this.otpCode = '';
+            this.otpError.set('');
+            this.otpJob.set({ clientId: client.id, clientName: client.name, jobId: job.id });
+            this.syncMessage.set(
+              `Vault OTP required for ${client.name}. Enter the one-time password from the Income Tax portal.`
+            );
+          } else if (job.status === 'Succeeded') {
             this.syncMessage.set(
               `Sync succeeded for ${client.name}: ${job.noticesUpserted} notice(s) upserted.`
             );
@@ -149,6 +191,50 @@ export class ClientsComponent implements OnInit {
         error: (err) => {
           this.syncingId.set(null);
           this.syncMessage.set(err?.error?.message ?? `Unable to sync ${client.name}.`);
+        }
+      });
+  }
+
+  closeOtpModal(): void {
+    this.otpJob.set(null);
+    this.otpError.set('');
+    this.otpCode = '';
+  }
+
+  submitOtp(): void {
+    const pending = this.otpJob();
+    if (!pending) {
+      return;
+    }
+
+    this.otpSubmitting.set(true);
+    this.otpError.set('');
+    this.http
+      .post<SyncJobResult>(
+        `${environment.apiBaseUrl}/api/v1/clients/${pending.clientId}/sync/${pending.jobId}/otp`,
+        { otp: this.otpCode.trim() }
+      )
+      .subscribe({
+        next: (job) => {
+          this.otpSubmitting.set(false);
+          if (job.status === 'Succeeded') {
+            this.closeOtpModal();
+            this.syncMessage.set(
+              `Sync succeeded for ${pending.clientName}: ${job.noticesUpserted} notice(s) upserted.`
+            );
+          } else if (job.status === 'AwaitingOtp') {
+            this.otpError.set('OTP was not accepted. Try again.');
+          } else {
+            this.closeOtpModal();
+            this.syncMessage.set(
+              job.errorMessage ?? `Sync ${job.status} for ${pending.clientName}.`
+            );
+          }
+          this.load();
+        },
+        error: (err) => {
+          this.otpSubmitting.set(false);
+          this.otpError.set(err?.error?.message ?? 'Unable to submit OTP.');
         }
       });
   }

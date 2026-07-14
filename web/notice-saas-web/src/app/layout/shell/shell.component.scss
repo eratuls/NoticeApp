@@ -312,22 +312,23 @@ nav a.active {
 .content {
   flex: 1;
   padding: 1.75rem clamp(1.25rem, 3vw, 2rem) 2.5rem;
+  /* Opacity only — a retained transform makes position:fixed modals clip to this box. */
   animation: content-in 0.7s var(--ease-out) 0.12s both;
 }
 
 @keyframes rail-in {
   from { opacity: 0; transform: translateX(-0.75rem); }
-  to { opacity: 1; transform: translateX(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes strip-in {
   from { opacity: 0; transform: translateY(-0.4rem); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes content-in {
-  from { opacity: 0; transform: translateY(0.5rem); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (max-width: 860px) {

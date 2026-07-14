@@ -1,30 +1,63 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using NoticeSaaS.Application.Sync;
 using NoticeSaaS.Domain.Enums;
 
 namespace NoticeSaaS.Infrastructure.Sync;
 
 /// <summary>
-/// Password-only portal adapter for local/dev. Simulates a successful Income Tax login
-/// and returns deterministic notices so upsert/dedupe can be tested without Playwright.
-/// Swap for a Playwright implementation when vault/login go/no-go passes.
+/// Portal adapter for local/dev.
+/// <list type="bullet">
+/// <item>Any non-empty password except <c>wrong-password</c> is treated as valid login.</item>
+/// <item>Password <c>vault-otp</c> requires OTP <c>123456</c> only when fetching notices.</item>
+/// <item>Profile (name, PAN, Aadhaar) is derived from the portal username (usually PAN).</item>
+/// </list>
+/// Swap for a Playwright / real e-Filing implementation when vault/login go/no-go passes.
 /// </summary>
 public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
 {
-    public Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesAsync(
-        PortalLoginRequest request,
+    public const string VaultPassword = "vault-otp";
+    public const string ValidOtp = "123456";
+    public const string InvalidPassword = "wrong-password";
+
+    public Task<PortalProfileDto> LoginAndGetProfileAsync(
+        PortalCredentialsRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        ValidateCredentials(request.Username, request.Password);
+
+        var pan = ResolvePan(request.Username);
+        var name = ResolveName(pan, request.Username);
+        var aadhaarMasked = MaskAadhaar(DeriveAadhaarDigits(pan));
+
+        return Task.FromResult(new PortalProfileDto(name, pan, aadhaarMasked));
+    }
+
+    public Task<IReadOnlyList<PortalNoticeDto>> FetchNoticesAsync(
+        PortalLoginRequest request,
+        string? otp = null,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateCredentials(request.Username, request.Password);
+
+        var requiresVault = string.Equals(request.Password, VaultPassword, StringComparison.Ordinal);
+        if (requiresVault)
         {
-            throw new InvalidOperationException("Portal username and password are required.");
+            if (string.IsNullOrWhiteSpace(otp))
+            {
+                throw new PortalOtpRequiredException();
+            }
+
+            if (!string.Equals(otp.Trim(), ValidOtp, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Income Tax portal login failed: invalid OTP.");
+            }
         }
 
-        if (string.Equals(request.Password, "wrong-password", StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("Income Tax portal login failed: invalid password.");
-        }
-
-        var pan = request.Pan.ToUpperInvariant();
+        var pan = string.IsNullOrWhiteSpace(request.Pan)
+            ? ResolvePan(request.Username)
+            : request.Pan.Trim().ToUpperInvariant();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         IReadOnlyList<PortalNoticeDto> notices =
         [
@@ -52,4 +85,69 @@ public sealed class MockIncomeTaxPortalClient : IIncomeTaxPortalClient
 
         return Task.FromResult(notices);
     }
+
+    private static void ValidateCredentials(string? username, string? password)
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("Portal username and password are required.");
+        }
+
+        if (string.Equals(password, InvalidPassword, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Income Tax portal login failed: invalid username or password.");
+        }
+    }
+
+    /// <summary>Income Tax user ID is typically the PAN; otherwise derive a stable demo PAN.</summary>
+    internal static string ResolvePan(string username)
+    {
+        var trimmed = username.Trim().ToUpperInvariant();
+        if (trimmed.Length == 10 && trimmed.All(char.IsLetterOrDigit))
+        {
+            return trimmed;
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(trimmed));
+        var digits = new StringBuilder(5);
+        for (var i = 0; i < hash.Length && digits.Length < 4; i++)
+        {
+            digits.Append((hash[i] % 10).ToString(CultureInfo.InvariantCulture));
+        }
+
+        var letters = new string(trimmed.Where(char.IsLetter).Take(5).ToArray()).PadRight(5, 'X');
+        if (letters.Length > 5)
+        {
+            letters = letters[..5];
+        }
+
+        return $"{letters.ToUpperInvariant()}{digits}A";
+    }
+
+    private static string ResolveName(string pan, string username)
+    {
+        if (string.Equals(pan, "AABCM1234F", StringComparison.Ordinal))
+        {
+            return "Marshal Quarries And Granites Pvt Ltd";
+        }
+
+        return $"Assessee {username.Trim()}";
+    }
+
+    private static string DeriveAadhaarDigits(string pan)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"aadhaar:{pan}"));
+        var digits = new StringBuilder(12);
+        for (var i = 0; i < hash.Length && digits.Length < 12; i++)
+        {
+            digits.Append((hash[i] % 10).ToString(CultureInfo.InvariantCulture));
+        }
+
+        return digits.ToString();
+    }
+
+    private static string MaskAadhaar(string digits) =>
+        digits.Length >= 4
+            ? $"XXXX-XXXX-{digits[^4..]}"
+            : "XXXX-XXXX-XXXX";
 }

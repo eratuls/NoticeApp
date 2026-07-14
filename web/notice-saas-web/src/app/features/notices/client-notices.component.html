@@ -8,10 +8,46 @@
   } @else if (data()) {
     @if (data(); as d) {
       <header class="intro">
-        <p class="brand-line">NoticeSaaS</p>
-        <h1>{{ d.clientName }}</h1>
-        <p class="lede">{{ d.clientPan }} · {{ d.isActive ? 'Active' : 'Inactive' }}</p>
+        <div class="intro-row">
+          <div>
+            <p class="brand-line">NoticeSaaS</p>
+            <h1>{{ d.clientName }}</h1>
+            <p class="lede">{{ d.clientPan }} · {{ d.isActive ? 'Active' : 'Inactive' }}</p>
+          </div>
+          <button
+            type="button"
+            class="primary sync-btn"
+            (click)="triggerSync()"
+            [disabled]="syncing() || !d.isActive"
+          >
+            {{ syncing() ? 'Syncing…' : 'Sync now' }}
+          </button>
+        </div>
       </header>
+
+      <div class="sync-panel">
+        @if (latestSync(); as job) {
+          <p>
+            Latest sync:
+            <span class="sync-status" [attr.data-status]="job.status">{{ job.status }}</span>
+            @if (job.completedAtUtc) {
+              <span class="muted"> · {{ job.completedAtUtc | date: 'medium' }}</span>
+            }
+            @if (job.status === 'Succeeded') {
+              <span class="muted"> · {{ job.noticesUpserted }} notice(s)</span>
+            }
+          </p>
+          @if (job.errorMessage) {
+            <p class="sync-error">{{ job.errorMessage }}</p>
+          }
+        } @else {
+          <p class="muted">No sync jobs yet for this client.</p>
+        }
+      </div>
+
+      @if (syncMessage()) {
+        <p class="sync-banner" role="status">{{ syncMessage() }}</p>
+      }
 
       <div class="tabs" role="tablist">
         @for (tab of tabs; track tab.key) {
@@ -81,3 +117,41 @@
     }
   }
 </section>
+
+@if (otpJobId()) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="otp-title">
+    <form class="modal" (ngSubmit)="submitOtp()">
+      <h2 id="otp-title">Vault OTP required</h2>
+      <p class="modal-lede">
+        Sync paused at Income Tax vault login. Enter the OTP sent to the registered mobile/email,
+        then continue.
+      </p>
+
+      <label>
+        <span>One-time password</span>
+        <input
+          name="otpCode"
+          [(ngModel)]="otpCode"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="12"
+          required
+          autofocus
+        />
+      </label>
+
+      @if (otpError()) {
+        <p class="state error">{{ otpError() }}</p>
+      }
+
+      <div class="actions">
+        <button type="button" class="ghost" (click)="closeOtpModal()" [disabled]="otpSubmitting()">
+          Cancel
+        </button>
+        <button type="submit" class="primary" [disabled]="otpSubmitting() || !otpCode.trim()">
+          {{ otpSubmitting() ? 'Submitting…' : 'Submit OTP' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

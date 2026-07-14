@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NoticeSaaS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using NoticeSaaS.Infrastructure.Persistence;
 namespace NoticeSaaS.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(NoticeSaaSDbContext))]
-    partial class NoticeSaaSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713164820_AddSyncJobOtpHandoff")]
+    partial class AddSyncJobOtpHandoff
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -73,10 +76,6 @@ namespace NoticeSaaS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AadhaarMasked")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("CaPan")
                         .HasMaxLength(10)

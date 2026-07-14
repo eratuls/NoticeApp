@@ -13,6 +13,7 @@ public class SyncJobConfiguration : IEntityTypeConfiguration<SyncJob>
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         builder.Property(x => x.Trigger).HasConversion<string>().HasMaxLength(32);
         builder.Property(x => x.ErrorMessage).HasMaxLength(1000);
+        builder.Property(x => x.SubmittedOtpProtected).HasMaxLength(500);
 
         builder.HasIndex(x => new { x.ClientId, x.CreatedAtUtc });
         builder.HasIndex(x => new { x.Status, x.CreatedAtUtc });
