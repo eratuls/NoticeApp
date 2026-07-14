@@ -17,10 +17,16 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
+    var origins = builder.Configuration.GetSection("Cors:AngularOrigins").Get<string[]>()
+        ??
+        [
+            "http://localhost:4200",
+            "https://localhost:4200",
+            "http://localhost:8088"
+        ];
+
     options.AddPolicy("AngularDev", policy =>
-        policy.WithOrigins(
-                "http://localhost:4200",
-                "https://localhost:4200")
+        policy.WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
@@ -30,10 +36,16 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    await app.Services.InitializeDatabaseAsync();
 }
 
-app.UseHttpsRedirection();
+await app.Services.InitializeDatabaseAsync();
+
+if (!app.Environment.IsEnvironment("Production")
+    || !string.IsNullOrWhiteSpace(app.Configuration["ASPNETCORE_HTTPS_PORT"]))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AngularDev");
 app.UseAuthentication();
 app.UseMiddleware<SessionActivityMiddleware>();
